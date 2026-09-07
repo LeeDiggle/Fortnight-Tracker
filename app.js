@@ -1,596 +1,1047 @@
 const TARGET = 75 * 60;
-const KEY = "fortnightTracker.v1";
+const KEY = "fortnightTracker.v2";
 
 const presets = {
-  monday:  {start:"07:30", finish:"15:30", break:30, note:"Mon gym"},
-  office:  {start:"07:30", finish:"16:30", break:30, note:"Office"},
-  cycle:   {start:"07:30", finish:"16:00", break:30, note:"Cycle / office"},
-  wfhLong: {start:"07:00", finish:"16:30", break:30, note:"WFH long"},
-  wfhGym:  {start:"07:00", finish:"16:30", break:90, note:"WFH + gym"}
+  monday: {
+    start: "07:30",
+    finish: "15:30",
+    break: 30,
+    note: "Mon gym"
+  },
+  office: {
+    start: "07:30",
+    finish: "16:30",
+    break: 30,
+    note: "Office"
+  },
+  cycle: {
+    start: "07:30",
+    finish: "16:00",
+    break: 30,
+    note: "Cycle / office"
+  },
+  wfhLong: {
+    start: "07:00",
+    finish: "16:30",
+    break: 30,
+    note: "WFH long"
+  },
+  wfhGym: {
+    start: "07:00",
+    finish: "16:30",
+    break: 90,
+    note: "WFH + gym"
+  }
 };
 
-const startOptions = ["06:30","07:00","07:30","08:00"];
-const finishOptions = ["15:30","16:00","16:30","17:00"];
-const breakOptions = [30,60,90];
+const startOptions = [
+  "06:30",
+  "07:00",
+  "07:30",
+  "08:00"
+];
+
+const finishOptions = [
+  "15:30",
+  "16:00",
+  "16:30",
+  "17:00"
+];
+
+const breakOptions = [30, 60, 90];
 
 const el = id => document.getElementById(id);
-const pad = n => String(n).padStart(2,"0");
 
-function localISO(d){
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const pad = n =>
+  String(n).padStart(2, "0");
+
+
+function localISO(date) {
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate())
+  ].join("-");
 }
 
-function parseISO(s){
-  return new Date(`${s}T12:00:00`);
-}
 
-function addDays(s,n){
-  const d = parseISO(s);
-  d.setDate(d.getDate()+n);
-  return localISO(d);
-}
+function parseISO(value) {
+  if (!value) {
+    return new Date();
+  }
 
-function fmtDate(
-  s,
-  opts = {weekday:"short",day:"numeric",month:"short"}
-){
-  return parseISO(s).toLocaleDateString("en-GB",opts);
-}
+  const parts = value
+    .split("-")
+    .map(Number);
 
-function mondayOf(date = new Date()){
-  const d = new Date(date);
-  const wd = d.getDay();
-  d.setDate(d.getDate() + (wd===0 ? -6 : 1-wd));
-  return localISO(d);
-}
+  if (
+    parts.length !== 3 ||
+    parts.some(Number.isNaN)
+  ) {
+    return new Date();
+  }
 
-function timeToMin(t){
-  if(!t) return null;
-  const [h,m] = t.split(":").map(Number);
-  return h*60+m;
-}
-
-function paidMinutes(day){
-  if(!day || day.off || !day.start || !day.finish) return 0;
-
-  const s = timeToMin(day.start);
-  const f = timeToMin(day.finish);
-
-  if(f <= s) return 0;
-
-  return Math.max(
+  return new Date(
+    parts[0],
+    parts[1] - 1,
+    parts[2],
+    12,
     0,
-    f - s - Number(day.break || 0)
+    0
   );
 }
 
-function fmtHM(m){
-  m = Math.max(0,Math.round(m));
-  return `${Math.floor(m/60)}h ${pad(m%60)}m`;
+
+function addDays(value, amount) {
+  const date = parseISO(value);
+
+  date.setDate(
+    date.getDate() + amount
+  );
+
+  return localISO(date);
 }
 
-function makeDays(start, offWeek){
-  const offsets = [0,1,2,3,4,7,8,9,10,11];
 
-  return offsets.map((o,i) => ({
-    date: addDays(start,o),
-    week: i < 5 ? 1 : 2,
-    weekday: i % 5,
-    off:
-      (offWeek===1 && i===4) ||
-      (offWeek===2 && i===9),
-    start:"",
-    finish:"",
-    break:30,
-    note:""
-  }));
+function mondayOf(date = new Date()) {
+  const d =
+    date instanceof Date
+      ? new Date(date)
+      : parseISO(date);
+
+  const weekday = d.getDay();
+
+  const adjustment =
+    weekday === 0
+      ? -6
+      : 1 - weekday;
+
+  d.setDate(
+    d.getDate() + adjustment
+  );
+
+  return localISO(d);
 }
 
-function blankState(){
-  const start = mondayOf();
+
+function fmtDate(
+  value,
+  options = {
+    weekday: "short",
+    day: "numeric",
+    month: "short"
+  }
+) {
+  return parseISO(value)
+    .toLocaleDateString(
+      "en-GB",
+      options
+    );
+}
+
+
+function timeToMin(value) {
+  if (!value) {
+    return null;
+  }
+
+  const [hours, minutes] =
+    value.split(":").map(Number);
+
+  return (
+    hours * 60 +
+    minutes
+  );
+}
+
+
+function paidMinutes(day) {
+  if (
+    !day ||
+    day.off ||
+    !day.start ||
+    !day.finish
+  ) {
+    return 0;
+  }
+
+  const start =
+    timeToMin(day.start);
+
+  const finish =
+    timeToMin(day.finish);
+
+  if (finish <= start) {
+    return 0;
+  }
+
+  return Math.max(
+    0,
+    finish -
+      start -
+      Number(day.break || 0)
+  );
+}
+
+
+function fmtHM(minutes) {
+  const total =
+    Math.max(
+      0,
+      Math.round(minutes)
+    );
+
+  const hours =
+    Math.floor(total / 60);
+
+  const mins =
+    total % 60;
+
+  return `${hours}h ${pad(mins)}m`;
+}
+
+
+function makeDays(
+  start,
+  offWeek
+) {
+  const offsets = [
+    0, 1, 2, 3, 4,
+    7, 8, 9, 10, 11
+  ];
+
+  return offsets.map(
+    (offset, index) => ({
+      date:
+        addDays(start, offset),
+
+      week:
+        index < 5 ? 1 : 2,
+
+      weekday:
+        index % 5,
+
+      off:
+        (
+          offWeek === 1 &&
+          index === 4
+        ) ||
+        (
+          offWeek === 2 &&
+          index === 9
+        ),
+
+      start: "",
+      finish: "",
+      break: 30,
+      note: ""
+    })
+  );
+}
+
+
+function blankState() {
+  const start =
+    mondayOf(new Date());
 
   return {
-    configured:false,
+    configured: false,
     start,
-    offWeek:2,
-    days:makeDays(start,2)
+    offWeek: 2,
+    days:
+      makeDays(start, 2)
   };
 }
 
-function load(){
-  try{
-    const s = JSON.parse(localStorage.getItem(KEY));
 
-    if(
-      s &&
-      Array.isArray(s.days) &&
-      s.days.length===10
-    ){
-      return s;
+function load() {
+  try {
+    const saved =
+      JSON.parse(
+        localStorage.getItem(KEY)
+      );
+
+    if (
+      saved &&
+      saved.start &&
+      Array.isArray(saved.days) &&
+      saved.days.length === 10
+    ) {
+      return saved;
     }
-  }catch{}
+  }
+  catch (error) {
+    console.log(
+      "Could not load saved fortnight.",
+      error
+    );
+  }
 
   return blankState();
 }
 
+
 let state = load();
 let editingIndex = null;
 
-function persist(){
-  localStorage.setItem(KEY,JSON.stringify(state));
+
+function persist() {
+  localStorage.setItem(
+    KEY,
+    JSON.stringify(state)
+  );
 }
 
-function renderSetupDates(){
-  el("startDateButton").textContent = fmtDate(
-    state.start,
-    {
-      weekday:"long",
-      day:"numeric",
-      month:"long",
-      year:"numeric"
-    }
-  );
 
-  el("startDateNative").value = state.start;
+function renderSetupDates() {
+  const startButton =
+    el("startDateButton");
 
-  el("week1FridayLabel").textContent =
-    fmtDate(addDays(state.start,4));
+  startButton.textContent =
+    fmtDate(
+      state.start,
+      {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      }
+    );
 
-  el("week2FridayLabel").textContent =
-    fmtDate(addDays(state.start,11));
+  el("startDateNative").value =
+    state.start;
 
-  el("setupOffSummary").textContent =
+  el(
+    "week1FridayLabel"
+  ).textContent =
+    fmtDate(
+      addDays(
+        state.start,
+        4
+      )
+    );
+
+  el(
+    "week2FridayLabel"
+  ).textContent =
+    fmtDate(
+      addDays(
+        state.start,
+        11
+      )
+    );
+
+  el(
+    "setupOffSummary"
+  ).textContent =
     `W${state.offWeek} Fri`;
 
   document
-    .querySelectorAll(".choice-btn")
-    .forEach(b => {
+    .querySelectorAll(
+      ".choice-btn"
+    )
+    .forEach(button => {
       const week =
-        Number(b.dataset.off.replace("week",""));
+        Number(
+          button.dataset.off
+            .replace(
+              "week",
+              ""
+            )
+        );
 
-      b.classList.toggle(
+      button.classList.toggle(
         "selected",
-        week===state.offWeek
+        week ===
+          state.offWeek
       );
     });
 }
 
-function renderShell(){
-  const end = addDays(state.start,13);
 
-  el("fortnightRange").textContent =
+function renderShell() {
+  const end =
+    addDays(
+      state.start,
+      13
+    );
+
+  el(
+    "fortnightRange"
+  ).textContent =
     state.configured
-      ? `${fmtDate(
-          state.start,
-          {day:"numeric",month:"short"}
-        )} – ${fmtDate(
-          end,
-          {day:"numeric",month:"short",year:"numeric"}
-        )}`
+      ? `${
+          fmtDate(
+            state.start,
+            {
+              day: "numeric",
+              month: "short"
+            }
+          )
+        } – ${
+          fmtDate(
+            end,
+            {
+              day: "numeric",
+              month: "short",
+              year: "numeric"
+            }
+          )
+        }`
       : "Set up your fortnight";
 
-  el("setupView").classList.toggle(
+  el(
+    "setupView"
+  ).classList.toggle(
     "hidden",
     state.configured
   );
 
-  el("trackerView").classList.toggle(
+  el(
+    "trackerView"
+  ).classList.toggle(
     "hidden",
     !state.configured
   );
 
   renderSetupDates();
 
-  if(state.configured){
+  if (state.configured) {
     renderOverview();
     renderCalendar();
   }
 }
 
-function renderOverview(){
-  const worked = state.days.reduce(
-    (a,d) => a + paidMinutes(d),
-    0
-  );
 
-  const remaining =
-    Math.max(0,TARGET-worked);
-
-  const unlogged = state.days.filter(
-    d => !d.off && paidMinutes(d)===0
-  ).length;
-
-  const avg =
-    unlogged ? remaining/unlogged : 0;
-
-  const pct =
-    Math.min(
-      100,
-      Math.round(worked/TARGET*100)
+function renderOverview() {
+  const worked =
+    state.days.reduce(
+      (total, day) =>
+        total +
+        paidMinutes(day),
+      0
     );
 
-  el("progressHeadline").textContent =
+  const remaining =
+    Math.max(
+      0,
+      TARGET - worked
+    );
+
+  const unlogged =
+    state.days.filter(
+      day =>
+        !day.off &&
+        paidMinutes(day) === 0
+    ).length;
+
+  const average =
+    unlogged
+      ? remaining / unlogged
+      : 0;
+
+  const percent =
+    Math.min(
+      100,
+      Math.round(
+        worked /
+        TARGET *
+        100
+      )
+    );
+
+  el(
+    "progressHeadline"
+  ).textContent =
     `${fmtHM(worked)} of 75h`;
 
-  el("progressPercent").textContent =
-    `${pct}%`;
+  el(
+    "progressPercent"
+  ).textContent =
+    `${percent}%`;
 
-  el("progressBar").style.width =
-    `${pct}%`;
+  el(
+    "progressBar"
+  ).style.width =
+    `${percent}%`;
 
-  el("workedMetric").textContent =
+  el(
+    "workedMetric"
+  ).textContent =
     fmtHM(worked);
 
-  el("remainingMetric").textContent =
+  el(
+    "remainingMetric"
+  ).textContent =
     fmtHM(remaining);
 
-  el("daysLeftMetric").textContent =
+  el(
+    "daysLeftMetric"
+  ).textContent =
     unlogged;
 
-  el("avgMetric").textContent =
-    fmtHM(avg);
+  el(
+    "avgMetric"
+  ).textContent =
+    fmtHM(average);
 
-  const pace = el("paceMessage");
+  const pace =
+    el("paceMessage");
 
-  pace.className = "pace-box";
+  pace.className =
+    "pace-box";
 
-  if(worked >= TARGET){
-    pace.classList.add("good");
+  if (worked >= TARGET) {
+    pace.classList.add(
+      "good"
+    );
 
     pace.innerHTML =
       `<strong>Target reached.</strong> ` +
-      `You are ${fmtHM(worked-TARGET)} over 75 hours.`;
+      `You are ${
+        fmtHM(
+          worked - TARGET
+        )
+      } over 75 hours.`;
   }
-  else if(avg <= 540){
+  else if (
+    average <= 540
+  ) {
     pace.classList.add(
-      avg <= 500 ? "good" : "warn"
+      average <= 500
+        ? "good"
+        : "warn"
     );
 
     pace.innerHTML =
-      `<strong>${fmtHM(remaining)} remaining.</strong> ` +
-      `Average ${fmtHM(avg)} across ` +
-      `${unlogged} unlogged working day` +
-      `${unlogged===1 ? "" : "s"}.`;
+      `<strong>${
+        fmtHM(remaining)
+      } remaining.</strong> ` +
+      `Average ${
+        fmtHM(average)
+      } across ${unlogged} ` +
+      `unlogged working day${
+        unlogged === 1
+          ? ""
+          : "s"
+      }.`;
   }
-  else{
-    pace.classList.add("warn");
+  else {
+    pace.classList.add(
+      "warn"
+    );
 
     pace.innerHTML =
       `<strong>Catch-up needed.</strong> ` +
-      `The remaining average is ${fmtHM(avg)}, ` +
-      `above a 9-hour paid day.`;
+      `The remaining average is ${
+        fmtHM(average)
+      }, above a 9-hour paid day.`;
   }
 
-  const today = localISO(new Date());
+  const today =
+    localISO(
+      new Date()
+    );
 
   el("dayList").innerHTML =
-    state.days.map((d,i) => {
+    state.days
+      .map(
+        (day, index) => {
+          const paid =
+            paidMinutes(day);
 
-      const p = paidMinutes(d);
-      const date = parseISO(d.date);
-
-      const dow =
-        date.toLocaleDateString(
-          "en-GB",
-          {weekday:"short"}
-        );
-
-      const label =
-        d.off
-          ? "Non-working Friday"
-          : (
-              d.note ||
-              (p ? "Logged" : "Not logged")
+          const date =
+            parseISO(
+              day.date
             );
 
-      return `
-        <button
-          class="day-row"
-          data-day="${i}"
-          style="
-            width:100%;
-            border-left:0;
-            border-right:0;
-            border-bottom:0;
-            background:transparent;
-            color:inherit;
-            text-align:left;
-          "
-        >
-          <div class="day-chip ${d.date===today ? "today" : ""}">
-            <span>${dow}</span>
-            <strong>${date.getDate()}</strong>
-          </div>
+          const weekday =
+            date.toLocaleDateString(
+              "en-GB",
+              {
+                weekday:
+                  "short"
+              }
+            );
 
-          <div class="day-main">
-            <strong>
-              Week ${d.week} · ${fmtDate(d.date)}
-            </strong>
-            <span>${label}</span>
-          </div>
+          const label =
+            day.off
+              ? "Non-working Friday"
+              : (
+                  day.note ||
+                  (
+                    paid
+                      ? "Logged"
+                      : "Not logged"
+                  )
+                );
 
-          <div class="day-hours ${d.off ? "off" : ""}">
-            ${
-              d.off
-                ? "OFF"
-                : (p ? fmtHM(p) : "—")
-            }
-          </div>
-        </button>
-      `;
-    }).join("");
+          return `
+            <button
+              class="day-row"
+              data-day="${index}"
+              style="
+                width:100%;
+                border-left:0;
+                border-right:0;
+                border-bottom:0;
+                background:transparent;
+                color:inherit;
+                text-align:left;
+              "
+            >
+              <div
+                class="day-chip ${
+                  day.date === today
+                    ? "today"
+                    : ""
+                }"
+              >
+                <span>
+                  ${weekday}
+                </span>
+                <strong>
+                  ${date.getDate()}
+                </strong>
+              </div>
+
+              <div class="day-main">
+                <strong>
+                  Week ${day.week}
+                  ·
+                  ${fmtDate(day.date)}
+                </strong>
+
+                <span>
+                  ${label}
+                </span>
+              </div>
+
+              <div
+                class="
+                  day-hours
+                  ${
+                    day.off
+                      ? "off"
+                      : ""
+                  }
+                "
+              >
+                ${
+                  day.off
+                    ? "OFF"
+                    : (
+                        paid
+                          ? fmtHM(paid)
+                          : "—"
+                      )
+                }
+              </div>
+            </button>
+          `;
+        }
+      )
+      .join("");
 
   document
-    .querySelectorAll("[data-day]")
-    .forEach(b => {
-      b.onclick = () =>
-        openEditor(Number(b.dataset.day));
+    .querySelectorAll(
+      "[data-day]"
+    )
+    .forEach(button => {
+      button.onclick =
+        () =>
+          openEditor(
+            Number(
+              button.dataset.day
+            )
+          );
     });
 }
 
-function renderCalendar(){
-  const today = localISO(new Date());
 
-  el("calendarGrid").innerHTML =
-    state.days.map((d,i) => {
+function renderCalendar() {
+  const today =
+    localISO(
+      new Date()
+    );
 
-      const p = paidMinutes(d);
-      const date = parseISO(d.date);
+  el(
+    "calendarGrid"
+  ).innerHTML =
+    state.days
+      .map(
+        (day, index) => {
+          const paid =
+            paidMinutes(day);
 
-      const dow =
-        date.toLocaleDateString(
-          "en-GB",
-          {weekday:"short"}
-        );
+          const date =
+            parseISO(
+              day.date
+            );
 
-      return `
-        <button
-          class="
-            cal-cell
-            ${d.date===today ? "today" : ""}
-            ${d.off ? "off" : ""}
-          "
-          data-cal="${i}"
-          style="color:inherit;text-align:left"
-        >
-          <div class="dow">
-            ${dow} · W${d.week}
-          </div>
+          const weekday =
+            date.toLocaleDateString(
+              "en-GB",
+              {
+                weekday:
+                  "short"
+              }
+            );
 
-          <div class="date">
-            ${date.getDate()}
-          </div>
+          return `
+            <button
+              class="
+                cal-cell
+                ${
+                  day.date === today
+                    ? "today"
+                    : ""
+                }
+                ${
+                  day.off
+                    ? "off"
+                    : ""
+                }
+              "
+              data-cal="${index}"
+              style="
+                color:inherit;
+                text-align:left;
+              "
+            >
+              <div class="dow">
+                ${weekday}
+                ·
+                W${day.week}
+              </div>
 
-          <div class="cal-hours">
-            ${
-              d.off
-                ? "OFF"
-                : (p ? fmtHM(p) : "")
-            }
-          </div>
-        </button>
-      `;
-    }).join("");
+              <div class="date">
+                ${date.getDate()}
+              </div>
+
+              <div class="cal-hours">
+                ${
+                  day.off
+                    ? "OFF"
+                    : (
+                        paid
+                          ? fmtHM(paid)
+                          : ""
+                      )
+                }
+              </div>
+            </button>
+          `;
+        }
+      )
+      .join("");
 
   document
-    .querySelectorAll("[data-cal]")
-    .forEach(b => {
-      b.onclick = () =>
-        openEditor(Number(b.dataset.cal));
+    .querySelectorAll(
+      "[data-cal]"
+    )
+    .forEach(button => {
+      button.onclick =
+        () =>
+          openEditor(
+            Number(
+              button.dataset.cal
+            )
+          );
     });
 }
+
 
 function renderOptionButtons(
   container,
   options,
   value,
   kind
-){
+) {
   el(container).innerHTML =
-    options.map(v => {
+    options
+      .map(option => {
+        const label =
+          kind === "break"
+            ? `${option}m`
+            : option;
 
-      const label =
-        kind==="break"
-          ? `${v}m`
-          : v;
+        const className =
+          kind === "break"
+            ? "break-btn"
+            : "time-btn";
 
-      return `
-        <button
-          class="
-            ${kind==="break" ? "break-btn" : "time-btn"}
-            ${String(v)===String(value) ? "selected" : ""}
-          "
-          data-value="${v}"
-        >
-          ${label}
-        </button>
-      `;
-    }).join("");
+        return `
+          <button
+            class="
+              ${className}
+              ${
+                String(option) ===
+                String(value)
+                  ? "selected"
+                  : ""
+              }
+            "
+            data-value="${option}"
+          >
+            ${label}
+          </button>
+        `;
+      })
+      .join("");
 }
 
-function clearPresetSelection(){
+
+function clearPresetSelection() {
   document
-    .querySelectorAll(".preset")
+    .querySelectorAll(
+      ".preset"
+    )
     .forEach(
-      b => b.classList.remove("selected")
+      button =>
+        button.classList.remove(
+          "selected"
+        )
     );
 }
 
-function editorValue(){
+
+function editorValue() {
+  const start =
+    document.querySelector(
+      "#startButtons .selected"
+    );
+
+  const finish =
+    document.querySelector(
+      "#finishButtons .selected"
+    );
+
+  const breakButton =
+    document.querySelector(
+      "#breakButtons .selected"
+    );
+
   return {
     start:
-      document.querySelector(
-        "#startButtons .selected"
-      )?.dataset.value || "",
+      start?.dataset.value ||
+      "",
 
     finish:
-      document.querySelector(
-        "#finishButtons .selected"
-      )?.dataset.value || "",
+      finish?.dataset.value ||
+      "",
 
     break:
       Number(
-        document.querySelector(
-          "#breakButtons .selected"
-        )?.dataset.value || 30
+        breakButton
+          ?.dataset.value ||
+        30
       ),
 
     note:
-      el("dayNote").value.trim()
+      el("dayNote")
+        .value
+        .trim()
   };
 }
 
-function refreshEditorTotal(){
-  const tmp = {
+
+function refreshEditorTotal() {
+  const temp = {
     ...editorValue(),
-    off:false
+    off: false
   };
 
-  const p = paidMinutes(tmp);
+  const paid =
+    paidMinutes(temp);
 
-  el("editorPaid").textContent =
-    fmtHM(p);
+  el(
+    "editorPaid"
+  ).textContent =
+    fmtHM(paid);
 
-  const warn =
+  const warning =
     el("dayWarning");
 
   let text = "";
 
-  if(
-    tmp.start &&
-    tmp.finish &&
-    timeToMin(tmp.finish) <=
-    timeToMin(tmp.start)
-  ){
+  if (
+    temp.start &&
+    temp.finish &&
+    timeToMin(
+      temp.finish
+    ) <=
+    timeToMin(
+      temp.start
+    )
+  ) {
     text =
       "Finish time must be later than start time.";
   }
-  else if(p > 540){
+  else if (
+    paid > 540
+  ) {
     text =
       "This is more than 9 paid hours.";
   }
-  else if(p > 0 && p < 360){
+  else if (
+    paid > 0 &&
+    paid < 360
+  ) {
     text =
       "This is under 6 paid hours.";
   }
 
-  warn.textContent = text;
+  warning.textContent =
+    text;
 
-  warn.classList.toggle(
+  warning.classList.toggle(
     "hidden",
     !text
   );
 }
 
+
 function bindChoiceButtons(
-  container,
-  onPick
-){
+  container
+) {
   el(container)
-    .querySelectorAll("button")
-    .forEach(b => {
-
-      b.onclick = () => {
-
+    .querySelectorAll(
+      "button"
+    )
+    .forEach(button => {
+      button.onclick = () => {
         el(container)
-          .querySelectorAll("button")
+          .querySelectorAll(
+            "button"
+          )
           .forEach(
-            x => x.classList.remove("selected")
+            item =>
+              item.classList.remove(
+                "selected"
+              )
           );
 
-        b.classList.add("selected");
+        button.classList.add(
+          "selected"
+        );
 
         clearPresetSelection();
-
-        onPick?.();
 
         refreshEditorTotal();
       };
     });
 }
 
-function openEditor(i){
-  editingIndex = i;
 
-  const d = state.days[i];
+function openEditor(index) {
+  editingIndex =
+    index;
 
-  el("editorWeek").textContent =
-    `Week ${d.week}`;
+  const day =
+    state.days[index];
 
-  el("editorDate").textContent =
+  el(
+    "editorWeek"
+  ).textContent =
+    `Week ${day.week}`;
+
+  el(
+    "editorDate"
+  ).textContent =
     fmtDate(
-      d.date,
+      day.date,
       {
-        weekday:"long",
-        day:"numeric",
-        month:"long"
+        weekday: "long",
+        day: "numeric",
+        month: "long"
       }
     );
 
-  el("editorSheet")
-    .classList.remove("hidden");
+  el(
+    "editorSheet"
+  ).classList.remove(
+    "hidden"
+  );
 
   document.body.style.overflow =
     "hidden";
 
-  el("offDayPanel")
-    .classList.toggle(
-      "hidden",
-      !d.off
-    );
+  el(
+    "offDayPanel"
+  ).classList.toggle(
+    "hidden",
+    !day.off
+  );
 
-  el("workDayPanel")
-    .classList.toggle(
-      "hidden",
-      d.off
-    );
+  el(
+    "workDayPanel"
+  ).classList.toggle(
+    "hidden",
+    day.off
+  );
 
-  if(d.off) return;
+  if (day.off) {
+    return;
+  }
 
   renderOptionButtons(
     "startButtons",
     startOptions,
-    d.start || "07:30",
+    day.start || "07:30",
     "time"
   );
 
   renderOptionButtons(
     "finishButtons",
     finishOptions,
-    d.finish || "16:30",
+    day.finish || "16:30",
     "time"
   );
 
   renderOptionButtons(
     "breakButtons",
     breakOptions,
-    d.break || 30,
+    day.break || 30,
     "break"
   );
 
-  bindChoiceButtons("startButtons");
-  bindChoiceButtons("finishButtons");
-  bindChoiceButtons("breakButtons");
+  bindChoiceButtons(
+    "startButtons"
+  );
+
+  bindChoiceButtons(
+    "finishButtons"
+  );
+
+  bindChoiceButtons(
+    "breakButtons"
+  );
 
   el("dayNote").value =
-    d.note || "";
+    day.note || "";
 
   clearPresetSelection();
 
-  for(
-    const [key,p]
+  for (
+    const [key, preset]
     of Object.entries(presets)
-  ){
-    if(
-      d.start===p.start &&
-      d.finish===p.finish &&
-      Number(d.break)===p.break
-    ){
+  ) {
+    if (
+      day.start ===
+        preset.start &&
+      day.finish ===
+        preset.finish &&
+      Number(day.break) ===
+        preset.break
+    ) {
       document
         .querySelector(
           `.preset[data-preset="${key}"]`
         )
-        ?.classList.add("selected");
+        ?.classList.add(
+          "selected"
+        );
 
       break;
     }
@@ -599,156 +1050,252 @@ function openEditor(i){
   refreshEditorTotal();
 }
 
-function closeEditor(){
-  el("editorSheet")
-    .classList.add("hidden");
 
-  document.body.style.overflow = "";
+function closeEditor() {
+  el(
+    "editorSheet"
+  ).classList.add(
+    "hidden"
+  );
+
+  document.body.style.overflow =
+    "";
 
   editingIndex = null;
 }
 
+
+/* -------------------------
+   SETUP CONTROLS
+------------------------- */
+
 document
-  .querySelectorAll(".choice-btn")
-  .forEach(b => {
-    b.onclick = () => {
+  .querySelectorAll(
+    ".choice-btn"
+  )
+  .forEach(button => {
+    button.onclick = () => {
       state.offWeek =
         Number(
-          b.dataset.off.replace("week","")
+          button.dataset.off
+            .replace(
+              "week",
+              ""
+            )
         );
 
       renderSetupDates();
     };
   });
 
-el("prevMonday").onclick = () => {
-  state.start =
-    addDays(state.start,-7);
 
-  renderSetupDates();
-};
+el("prevMonday").onclick =
+  () => {
+    state.start =
+      addDays(
+        state.start,
+        -7
+      );
 
-el("nextMonday").onclick = () => {
-  state.start =
-    addDays(state.start,7);
+    renderSetupDates();
+  };
 
-  renderSetupDates();
-};
 
-el("startDateButton").onclick = () => {
-  el("startDateNative").showPicker?.();
-};
+el("nextMonday").onclick =
+  () => {
+    state.start =
+      addDays(
+        state.start,
+        7
+      );
 
-el("startDateNative").onchange = e => {
-  if(!e.target.value) return;
+    renderSetupDates();
+  };
 
-  state.start =
-    mondayOf(
-      parseISO(e.target.value)
-    );
 
-  renderSetupDates();
-};
+el(
+  "startDateButton"
+).onclick =
+  () => {
+    const picker =
+      el(
+        "startDateNative"
+      );
 
-el("createFortnightBtn").onclick = () => {
-  state.days =
-    makeDays(
-      state.start,
-      state.offWeek
-    );
+    if (
+      typeof picker.showPicker ===
+      "function"
+    ) {
+      picker.showPicker();
+    }
+    else {
+      picker.click();
+    }
+  };
 
-  state.configured = true;
 
-  persist();
-  renderShell();
-};
+el(
+  "startDateNative"
+).onchange =
+  event => {
+    const value =
+      event.target.value;
 
-el("settingsBtn").onclick = () => {
-  if(!state.configured){
-    renderShell();
-    return;
-  }
+    if (!value) {
+      return;
+    }
 
-  if(
-    confirm(
-      "Change the fortnight setup? Existing logged days will stay until you create a new fortnight."
-    )
-  ){
-    state.configured = false;
+    state.start =
+      mondayOf(value);
+
+    renderSetupDates();
+  };
+
+
+el(
+  "createFortnightBtn"
+).onclick =
+  () => {
+    state.days =
+      makeDays(
+        state.start,
+        state.offWeek
+      );
+
+    state.configured =
+      true;
 
     persist();
+
     renderShell();
-  }
-};
+  };
+
+
+el("settingsBtn").onclick =
+  () => {
+    if (
+      !state.configured
+    ) {
+      return;
+    }
+
+    const change =
+      confirm(
+        "Change the fortnight setup? Creating a new fortnight will reset the currently logged days."
+      );
+
+    if (!change) {
+      return;
+    }
+
+    state.configured =
+      false;
+
+    persist();
+
+    renderShell();
+  };
+
+
+/* -------------------------
+   TABS
+------------------------- */
 
 document
-  .querySelectorAll(".seg")
-  .forEach(b => {
-    b.onclick = () => {
-
+  .querySelectorAll(
+    ".seg"
+  )
+  .forEach(button => {
+    button.onclick = () => {
       document
-        .querySelectorAll(".seg")
+        .querySelectorAll(
+          ".seg"
+        )
         .forEach(
-          x =>
-            x.classList.toggle(
+          item =>
+            item.classList.toggle(
               "active",
-              x===b
+              item === button
             )
         );
 
-      el("overviewTab")
-        .classList.toggle(
-          "hidden",
-          b.dataset.tab!=="overview"
-        );
+      el(
+        "overviewTab"
+      ).classList.toggle(
+        "hidden",
+        button.dataset.tab !==
+          "overview"
+      );
 
-      el("calendarTab")
-        .classList.toggle(
-          "hidden",
-          b.dataset.tab!=="calendar"
-        );
+      el(
+        "calendarTab"
+      ).classList.toggle(
+        "hidden",
+        button.dataset.tab !==
+          "calendar"
+      );
     };
   });
 
-el("closeEditor").onclick =
+
+/* -------------------------
+   DAY EDITOR
+------------------------- */
+
+el(
+  "closeEditor"
+).onclick =
   closeEditor;
 
-el("editorSheet").onclick = e => {
-  if(e.target===el("editorSheet")){
-    closeEditor();
-  }
-};
+
+el(
+  "editorSheet"
+).onclick =
+  event => {
+    if (
+      event.target ===
+      el("editorSheet")
+    ) {
+      closeEditor();
+    }
+  };
+
 
 document
-  .querySelectorAll(".preset")
-  .forEach(b => {
-    b.onclick = () => {
-
-      const p =
-        presets[b.dataset.preset];
+  .querySelectorAll(
+    ".preset"
+  )
+  .forEach(button => {
+    button.onclick = () => {
+      const preset =
+        presets[
+          button.dataset.preset
+        ];
 
       clearPresetSelection();
 
-      b.classList.add("selected");
+      button.classList.add(
+        "selected"
+      );
 
       renderOptionButtons(
         "startButtons",
         startOptions,
-        p.start,
+        preset.start,
         "time"
       );
 
       renderOptionButtons(
         "finishButtons",
         finishOptions,
-        p.finish,
+        preset.finish,
         "time"
       );
 
       renderOptionButtons(
         "breakButtons",
         breakOptions,
-        p.break,
+        preset.break,
         "break"
       );
 
@@ -765,80 +1312,129 @@ document
       );
 
       el("dayNote").value =
-        p.note;
+        preset.note;
 
       refreshEditorTotal();
     };
   });
 
-el("dayNote").oninput =
+
+el(
+  "dayNote"
+).oninput =
   refreshEditorTotal;
 
-el("saveDayBtn").onclick = () => {
-  if(editingIndex===null) return;
 
-  const v =
-    editorValue();
-
-  if(
-    !v.start ||
-    !v.finish ||
-    timeToMin(v.finish) <=
-    timeToMin(v.start)
-  ){
-    el("dayWarning").textContent =
-      "Choose a valid start and finish time.";
-
-    el("dayWarning")
-      .classList.remove("hidden");
-
-    return;
-  }
-
-  Object.assign(
-    state.days[editingIndex],
-    v
-  );
-
-  persist();
-
-  closeEditor();
-
-  renderOverview();
-  renderCalendar();
-};
-
-el("clearDayBtn").onclick = () => {
-  if(editingIndex===null) return;
-
-  Object.assign(
-    state.days[editingIndex],
-    {
-      start:"",
-      finish:"",
-      break:30,
-      note:""
+el(
+  "saveDayBtn"
+).onclick =
+  () => {
+    if (
+      editingIndex === null
+    ) {
+      return;
     }
-  );
 
-  persist();
+    const value =
+      editorValue();
 
-  closeEditor();
+    if (
+      !value.start ||
+      !value.finish ||
+      timeToMin(
+        value.finish
+      ) <=
+      timeToMin(
+        value.start
+      )
+    ) {
+      el(
+        "dayWarning"
+      ).textContent =
+        "Choose a valid start and finish time.";
 
-  renderOverview();
-  renderCalendar();
-};
+      el(
+        "dayWarning"
+      ).classList.remove(
+        "hidden"
+      );
+
+      return;
+    }
+
+    Object.assign(
+      state.days[
+        editingIndex
+      ],
+      value
+    );
+
+    persist();
+
+    closeEditor();
+
+    renderOverview();
+    renderCalendar();
+  };
+
+
+el(
+  "clearDayBtn"
+).onclick =
+  () => {
+    if (
+      editingIndex === null
+    ) {
+      return;
+    }
+
+    Object.assign(
+      state.days[
+        editingIndex
+      ],
+      {
+        start: "",
+        finish: "",
+        break: 30,
+        note: ""
+      }
+    );
+
+    persist();
+
+    closeEditor();
+
+    renderOverview();
+    renderCalendar();
+  };
+
+
+/* -------------------------
+   START APP
+------------------------- */
 
 renderShell();
 
-if("serviceWorker" in navigator){
+
+if (
+  "serviceWorker" in
+  navigator
+) {
   window.addEventListener(
     "load",
     () => {
       navigator
         .serviceWorker
-        .register("./sw.js")
-        .catch(()=>{});
+        .register(
+          "./sw.js"
+        )
+        .catch(
+          error =>
+            console.log(
+              "Service worker error:",
+              error
+            )
+        );
     }
   );
 }
