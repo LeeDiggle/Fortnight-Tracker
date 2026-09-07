@@ -1,5 +1,6 @@
 const TARGET = 75 * 60;
-const KEY = "fortnightTracker.v2";
+const KEY = "fortnightTracker.v3";
+const HISTORY_KEY = "fortnightTracker.history.v1";
 
 const presets = {
   monday: {
@@ -48,9 +49,14 @@ const finishOptions = [
   "17:00"
 ];
 
-const breakOptions = [30, 60, 90];
+const breakOptions = [
+  30,
+  60,
+  90
+];
 
-const el = id => document.getElementById(id);
+const el = id =>
+  document.getElementById(id);
 
 const pad = n =>
   String(n).padStart(2, "0");
@@ -70,9 +76,8 @@ function parseISO(value) {
     return new Date();
   }
 
-  const parts = value
-    .split("-")
-    .map(Number);
+  const parts =
+    value.split("-").map(Number);
 
   if (
     parts.length !== 3 ||
@@ -93,7 +98,8 @@ function parseISO(value) {
 
 
 function addDays(value, amount) {
-  const date = parseISO(value);
+  const date =
+    parseISO(value);
 
   date.setDate(
     date.getDate() + amount
@@ -109,7 +115,8 @@ function mondayOf(date = new Date()) {
       ? new Date(date)
       : parseISO(date);
 
-  const weekday = d.getDay();
+  const weekday =
+    d.getDay();
 
   const adjustment =
     weekday === 0
@@ -256,18 +263,57 @@ function blankState() {
 
 function load() {
   try {
-    const saved =
-      JSON.parse(
-        localStorage.getItem(KEY)
-      );
+    const current =
+      localStorage.getItem(KEY);
 
-    if (
-      saved &&
-      saved.start &&
-      Array.isArray(saved.days) &&
-      saved.days.length === 10
+    if (current) {
+      const saved =
+        JSON.parse(current);
+
+      if (
+        saved &&
+        saved.start &&
+        Array.isArray(saved.days) &&
+        saved.days.length === 10
+      ) {
+        return saved;
+      }
+    }
+
+    const previousKeys = [
+      "fortnightTracker.v2",
+      "fortnightTracker.v1"
+    ];
+
+    for (
+      const previousKey
+      of previousKeys
     ) {
-      return saved;
+      const raw =
+        localStorage.getItem(
+          previousKey
+        );
+
+      if (!raw) {
+        continue;
+      }
+
+      const previous =
+        JSON.parse(raw);
+
+      if (
+        previous &&
+        previous.start &&
+        Array.isArray(previous.days) &&
+        previous.days.length === 10
+      ) {
+        localStorage.setItem(
+          KEY,
+          JSON.stringify(previous)
+        );
+
+        return previous;
+      }
     }
   }
   catch (error) {
@@ -281,8 +327,43 @@ function load() {
 }
 
 
-let state = load();
-let editingIndex = null;
+function loadHistory() {
+  try {
+    const raw =
+      localStorage.getItem(
+        HISTORY_KEY
+      );
+
+    if (!raw) {
+      return [];
+    }
+
+    const history =
+      JSON.parse(raw);
+
+    return Array.isArray(history)
+      ? history
+      : [];
+  }
+  catch {
+    return [];
+  }
+}
+
+
+function saveHistory(history) {
+  localStorage.setItem(
+    HISTORY_KEY,
+    JSON.stringify(history)
+  );
+}
+
+
+let state =
+  load();
+
+let editingIndex =
+  null;
 
 
 function persist() {
@@ -294,10 +375,9 @@ function persist() {
 
 
 function renderSetupDates() {
-  const startButton =
-    el("startDateButton");
-
-  startButton.textContent =
+  el(
+    "startDateButton"
+  ).textContent =
     fmtDate(
       state.start,
       {
@@ -308,7 +388,9 @@ function renderSetupDates() {
       }
     );
 
-  el("startDateNative").value =
+  el(
+    "startDateNative"
+  ).value =
     state.start;
 
   el(
@@ -406,17 +488,23 @@ function renderShell() {
 
   renderSetupDates();
 
-  if (state.configured) {
+  if (
+    state.configured
+  ) {
     renderOverview();
     renderCalendar();
+    renderManageSummary();
   }
 }
 
 
-function renderOverview() {
+function getStats() {
   const worked =
     state.days.reduce(
-      (total, day) =>
+      (
+        total,
+        day
+      ) =>
         total +
         paidMinutes(day),
       0
@@ -428,12 +516,20 @@ function renderOverview() {
       TARGET - worked
     );
 
-  const unlogged =
+  const workingDays =
     state.days.filter(
+      day => !day.off
+    );
+
+  const loggedDays =
+    workingDays.filter(
       day =>
-        !day.off &&
-        paidMinutes(day) === 0
-    ).length;
+        paidMinutes(day) > 0
+    );
+
+  const unlogged =
+    workingDays.length -
+    loggedDays.length;
 
   const average =
     unlogged
@@ -445,45 +541,61 @@ function renderOverview() {
       100,
       Math.round(
         worked /
-        TARGET *
-        100
+          TARGET *
+          100
       )
     );
+
+  return {
+    worked,
+    remaining,
+    workingDays,
+    loggedDays,
+    unlogged,
+    average,
+    percent
+  };
+}
+
+
+function renderOverview() {
+  const stats =
+    getStats();
 
   el(
     "progressHeadline"
   ).textContent =
-    `${fmtHM(worked)} of 75h`;
+    `${fmtHM(stats.worked)} of 75h`;
 
   el(
     "progressPercent"
   ).textContent =
-    `${percent}%`;
+    `${stats.percent}%`;
 
   el(
     "progressBar"
   ).style.width =
-    `${percent}%`;
+    `${stats.percent}%`;
 
   el(
     "workedMetric"
   ).textContent =
-    fmtHM(worked);
+    fmtHM(stats.worked);
 
   el(
     "remainingMetric"
   ).textContent =
-    fmtHM(remaining);
+    fmtHM(stats.remaining);
 
   el(
     "daysLeftMetric"
   ).textContent =
-    unlogged;
+    stats.unlogged;
 
   el(
     "avgMetric"
   ).textContent =
-    fmtHM(average);
+    fmtHM(stats.average);
 
   const pace =
     el("paceMessage");
@@ -491,7 +603,9 @@ function renderOverview() {
   pace.className =
     "pace-box";
 
-  if (worked >= TARGET) {
+  if (
+    stats.worked >= TARGET
+  ) {
     pace.classList.add(
       "good"
     );
@@ -500,162 +614,129 @@ function renderOverview() {
       `<strong>Target reached.</strong> ` +
       `You are ${
         fmtHM(
-          worked - TARGET
+          stats.worked -
+          TARGET
         )
       } over 75 hours.`;
   }
   else if (
-    average <= 540
+    stats.loggedDays.length === 0
   ) {
     pace.classList.add(
-      average <= 500
-        ? "good"
-        : "warn"
+      "neutral"
     );
 
     pace.innerHTML =
       `<strong>${
-        fmtHM(remaining)
+        fmtHM(
+          stats.remaining
+        )
       } remaining.</strong> ` +
       `Average ${
-        fmtHM(average)
-      } across ${unlogged} ` +
-      `unlogged working day${
-        unlogged === 1
-          ? ""
-          : "s"
-      }.`;
+        fmtHM(
+          stats.average
+        )
+      } across ${
+        stats.unlogged
+      } unlogged working days.`;
   }
   else {
-    pace.classList.add(
-      "warn"
-    );
+    const expectedPerDay =
+      TARGET / 9;
 
-    pace.innerHTML =
-      `<strong>Catch-up needed.</strong> ` +
-      `The remaining average is ${
-        fmtHM(average)
-      }, above a 9-hour paid day.`;
+    const expectedWorked =
+      expectedPerDay *
+      stats.loggedDays.length;
+
+    const difference =
+      stats.worked -
+      expectedWorked;
+
+    if (
+      difference >= 15
+    ) {
+      pace.classList.add(
+        "good"
+      );
+
+      pace.innerHTML =
+        `<strong>You're ahead.</strong> ` +
+        `${fmtHM(
+          stats.remaining
+        )} remaining, averaging ${
+          fmtHM(
+            stats.average
+          )
+        } across ${
+          stats.unlogged
+        } working days.`;
+    }
+    else if (
+      difference <= -15
+    ) {
+      pace.classList.add(
+        "warn"
+      );
+
+      pace.innerHTML =
+        `<strong>You're slightly behind pace.</strong> ` +
+        `${fmtHM(
+          stats.remaining
+        )} remaining, averaging ${
+          fmtHM(
+            stats.average
+          )
+        } across ${
+          stats.unlogged
+        } working days.`;
+    }
+    else {
+      pace.classList.add(
+        "neutral"
+      );
+
+      pace.innerHTML =
+        `<strong>On track.</strong> ` +
+        `${fmtHM(
+          stats.remaining
+        )} remaining, averaging ${
+          fmtHM(
+            stats.average
+          )
+        } across ${
+          stats.unlogged
+        } working days.`;
+    }
   }
 
-  const today =
-    localISO(
-      new Date()
+  const end =
+    parseISO(
+      addDays(
+        state.start,
+        13
+      )
     );
 
-  el("dayList").innerHTML =
-    state.days
-      .map(
-        (day, index) => {
-          const paid =
-            paidMinutes(day);
+  const today =
+    new Date();
 
-          const date =
-            parseISO(
-              day.date
-            );
+  const finished =
+    today >
+    new Date(
+      end.getFullYear(),
+      end.getMonth(),
+      end.getDate(),
+      23,
+      59,
+      59
+    );
 
-          const weekday =
-            date.toLocaleDateString(
-              "en-GB",
-              {
-                weekday:
-                  "short"
-              }
-            );
-
-          const label =
-            day.off
-              ? "Non-working Friday"
-              : (
-                  day.note ||
-                  (
-                    paid
-                      ? "Logged"
-                      : "Not logged"
-                  )
-                );
-
-          return `
-            <button
-              class="day-row"
-              data-day="${index}"
-              style="
-                width:100%;
-                border-left:0;
-                border-right:0;
-                border-bottom:0;
-                background:transparent;
-                color:inherit;
-                text-align:left;
-              "
-            >
-              <div
-                class="day-chip ${
-                  day.date === today
-                    ? "today"
-                    : ""
-                }"
-              >
-                <span>
-                  ${weekday}
-                </span>
-                <strong>
-                  ${date.getDate()}
-                </strong>
-              </div>
-
-              <div class="day-main">
-                <strong>
-                  Week ${day.week}
-                  ·
-                  ${fmtDate(day.date)}
-                </strong>
-
-                <span>
-                  ${label}
-                </span>
-              </div>
-
-              <div
-                class="
-                  day-hours
-                  ${
-                    day.off
-                      ? "off"
-                      : ""
-                  }
-                "
-              >
-                ${
-                  day.off
-                    ? "OFF"
-                    : (
-                        paid
-                          ? fmtHM(paid)
-                          : "—"
-                      )
-                }
-              </div>
-            </button>
-          `;
-        }
-      )
-      .join("");
-
-  document
-    .querySelectorAll(
-      "[data-day]"
-    )
-    .forEach(button => {
-      button.onclick =
-        () =>
-          openEditor(
-            Number(
-              button.dataset.day
-            )
-          );
-    });
+  el(
+    "nextFortnightBtn"
+  ).classList.toggle(
+    "hidden",
+    !finished
+  );
 }
 
 
@@ -670,7 +751,10 @@ function renderCalendar() {
   ).innerHTML =
     state.days
       .map(
-        (day, index) => {
+        (
+          day,
+          index
+        ) => {
           const paid =
             paidMinutes(day);
 
@@ -687,6 +771,9 @@ function renderCalendar() {
                   "short"
               }
             );
+
+          const logged =
+            paid > 0;
 
           return `
             <button
@@ -702,12 +789,14 @@ function renderCalendar() {
                     ? "off"
                     : ""
                 }
+                ${
+                  logged
+                    ? "logged"
+                    : ""
+                }
               "
               data-cal="${index}"
-              style="
-                color:inherit;
-                text-align:left;
-              "
+              type="button"
             >
               <div class="dow">
                 ${weekday}
@@ -724,9 +813,9 @@ function renderCalendar() {
                   day.off
                     ? "OFF"
                     : (
-                        paid
+                        logged
                           ? fmtHM(paid)
-                          : ""
+                          : "—"
                       )
                 }
               </div>
@@ -749,6 +838,63 @@ function renderCalendar() {
             )
           );
     });
+}
+
+
+function renderManageSummary() {
+  const end =
+    addDays(
+      state.start,
+      13
+    );
+
+  el(
+    "manageRange"
+  ).textContent =
+    `${
+      fmtDate(
+        state.start,
+        {
+          day: "numeric",
+          month: "short",
+          year: "numeric"
+        }
+      )
+    } – ${
+      fmtDate(
+        end,
+        {
+          day: "numeric",
+          month: "short",
+          year: "numeric"
+        }
+      )
+    }`;
+
+  const offDate =
+    state.offWeek === 1
+      ? addDays(
+          state.start,
+          4
+        )
+      : addDays(
+          state.start,
+          11
+        );
+
+  el(
+    "manageDayOff"
+  ).textContent =
+    `Non-working day: ${
+      fmtDate(
+        offDate,
+        {
+          weekday: "long",
+          day: "numeric",
+          month: "long"
+        }
+      )
+    }`;
 }
 
 
@@ -783,6 +929,7 @@ function renderOptionButtons(
               }
             "
             data-value="${option}"
+            type="button"
           >
             ${label}
           </button>
@@ -934,6 +1081,26 @@ function bindChoiceButtons(
 }
 
 
+function resetSheetScroll(
+  sheetId
+) {
+  const sheet =
+    el(sheetId);
+
+  requestAnimationFrame(
+    () => {
+      sheet.scrollTop = 0;
+
+      requestAnimationFrame(
+        () => {
+          sheet.scrollTop = 0;
+        }
+      );
+    }
+  );
+}
+
+
 function openEditor(index) {
   editingIndex =
     index;
@@ -981,7 +1148,13 @@ function openEditor(index) {
     day.off
   );
 
-  if (day.off) {
+  resetSheetScroll(
+    "editorPanel"
+  );
+
+  if (
+    day.off
+  ) {
     return;
   }
 
@@ -1018,14 +1191,21 @@ function openEditor(index) {
     "breakButtons"
   );
 
-  el("dayNote").value =
+  el(
+    "dayNote"
+  ).value =
     day.note || "";
 
   clearPresetSelection();
 
   for (
-    const [key, preset]
-    of Object.entries(presets)
+    const [
+      key,
+      preset
+    ]
+    of Object.entries(
+      presets
+    )
   ) {
     if (
       day.start ===
@@ -1061,13 +1241,121 @@ function closeEditor() {
   document.body.style.overflow =
     "";
 
-  editingIndex = null;
+  editingIndex =
+    null;
 }
 
 
-/* -------------------------
+function openManage() {
+  renderManageSummary();
+
+  el(
+    "manageSheet"
+  ).classList.remove(
+    "hidden"
+  );
+
+  document.body.style.overflow =
+    "hidden";
+}
+
+
+function closeManage() {
+  el(
+    "manageSheet"
+  ).classList.add(
+    "hidden"
+  );
+
+  document.body.style.overflow =
+    "";
+}
+
+
+function archiveCurrentFortnight() {
+  const history =
+    loadHistory();
+
+  const snapshot = {
+    start:
+      state.start,
+
+    offWeek:
+      state.offWeek,
+
+    days:
+      state.days,
+
+    archivedAt:
+      new Date().toISOString()
+  };
+
+  const alreadyExists =
+    history.some(
+      item =>
+        item.start ===
+        snapshot.start
+    );
+
+  if (
+    !alreadyExists
+  ) {
+    history.push(
+      snapshot
+    );
+
+    saveHistory(
+      history
+    );
+  }
+}
+
+
+function startNextFortnight() {
+  archiveCurrentFortnight();
+
+  const newStart =
+    addDays(
+      state.start,
+      14
+    );
+
+  const newOffWeek =
+    state.offWeek === 1
+      ? 2
+      : 1;
+
+  state = {
+    configured: true,
+    start:
+      newStart,
+    offWeek:
+      newOffWeek,
+    days:
+      makeDays(
+        newStart,
+        newOffWeek
+      )
+  };
+
+  persist();
+
+  closeManage();
+
+  window.scrollTo(
+    {
+      top: 0,
+      behavior: "smooth"
+    }
+  );
+
+  renderShell();
+}
+
+
+/* =========================
    SETUP CONTROLS
-------------------------- */
+========================= */
 
 document
   .querySelectorAll(
@@ -1089,7 +1377,9 @@ document
   });
 
 
-el("prevMonday").onclick =
+el(
+  "prevMonday"
+).onclick =
   () => {
     state.start =
       addDays(
@@ -1101,7 +1391,9 @@ el("prevMonday").onclick =
   };
 
 
-el("nextMonday").onclick =
+el(
+  "nextMonday"
+).onclick =
   () => {
     state.start =
       addDays(
@@ -1141,7 +1433,9 @@ el(
     const value =
       event.target.value;
 
-    if (!value) {
+    if (
+      !value
+    ) {
       return;
     }
 
@@ -1171,22 +1465,97 @@ el(
   };
 
 
-el("settingsBtn").onclick =
+/* =========================
+   SETTINGS / MANAGE
+========================= */
+
+el(
+  "settingsBtn"
+).onclick =
   () => {
     if (
-      !state.configured
+      state.configured
+    ) {
+      openManage();
+    }
+  };
+
+
+el(
+  "manageFortnightBtn"
+).onclick =
+  openManage;
+
+
+el(
+  "closeManage"
+).onclick =
+  closeManage;
+
+
+el(
+  "manageSheet"
+).onclick =
+  event => {
+    if (
+      event.target ===
+      el("manageSheet")
+    ) {
+      closeManage();
+    }
+  };
+
+
+el(
+  "startNextBtn"
+).onclick =
+  () => {
+    const confirmed =
+      confirm(
+        "Start the next fortnight? Your current fortnight will be saved in local history."
+      );
+
+    if (
+      confirmed
+    ) {
+      startNextFortnight();
+    }
+  };
+
+
+el(
+  "nextFortnightBtn"
+).onclick =
+  () => {
+    const confirmed =
+      confirm(
+        "Start the next fortnight? Your current fortnight will be saved in local history."
+      );
+
+    if (
+      confirmed
+    ) {
+      startNextFortnight();
+    }
+  };
+
+
+el(
+  "changeSetupBtn"
+).onclick =
+  () => {
+    const confirmed =
+      confirm(
+        "Change the current fortnight setup? Creating it again will reset the currently logged days."
+      );
+
+    if (
+      !confirmed
     ) {
       return;
     }
 
-    const change =
-      confirm(
-        "Change the fortnight setup? Creating a new fortnight will reset the currently logged days."
-      );
-
-    if (!change) {
-      return;
-    }
+    closeManage();
 
     state.configured =
       false;
@@ -1197,53 +1566,18 @@ el("settingsBtn").onclick =
   };
 
 
-/* -------------------------
-   TABS
-------------------------- */
-
-document
-  .querySelectorAll(
-    ".seg"
-  )
-  .forEach(button => {
-    button.onclick = () => {
-      document
-        .querySelectorAll(
-          ".seg"
-        )
-        .forEach(
-          item =>
-            item.classList.toggle(
-              "active",
-              item === button
-            )
-        );
-
-      el(
-        "overviewTab"
-      ).classList.toggle(
-        "hidden",
-        button.dataset.tab !==
-          "overview"
-      );
-
-      el(
-        "calendarTab"
-      ).classList.toggle(
-        "hidden",
-        button.dataset.tab !==
-          "calendar"
-      );
-    };
-  });
-
-
-/* -------------------------
+/* =========================
    DAY EDITOR
-------------------------- */
+========================= */
 
 el(
   "closeEditor"
+).onclick =
+  closeEditor;
+
+
+el(
+  "closeOffDayBtn"
 ).onclick =
   closeEditor;
 
@@ -1311,7 +1645,9 @@ document
         "breakButtons"
       );
 
-      el("dayNote").value =
+      el(
+        "dayNote"
+      ).value =
         preset.note;
 
       refreshEditorTotal();
@@ -1409,16 +1745,15 @@ el(
   };
 
 
-/* -------------------------
+/* =========================
    START APP
-------------------------- */
+========================= */
 
 renderShell();
 
 
 if (
-  "serviceWorker" in
-  navigator
+  "serviceWorker" in navigator
 ) {
   window.addEventListener(
     "load",
