@@ -1,10 +1,10 @@
-const CACHE_NAME = "fortnight-tracker-v2";
+const CACHE_NAME = "fortnight-tracker-v3";
 
 const APP_FILES = [
   "./",
   "./index.html",
-  "./styles.css",
-  "./app.js",
+  "./styles.css?v=3",
+  "./app.js?v=3",
   "./manifest.webmanifest",
   "./icon-192.png",
   "./icon-512.png"
