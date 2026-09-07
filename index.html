@@ -1,185 +1,877 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#0d0f12">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Fortnight">
-  <title>9-Day Fortnight Tracker</title>
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+
+  <meta
+    name="theme-color"
+    content="#0d0f12"
+  >
+
+  <meta
+    name="apple-mobile-web-app-capable"
+    content="yes"
+  >
+
+  <meta
+    name="apple-mobile-web-app-status-bar-style"
+    content="black-translucent"
+  >
+
+  <meta
+    name="apple-mobile-web-app-title"
+    content="Fortnight"
+  >
+
+  <title>9-Day Fortnight</title>
+
+  <link
+    rel="manifest"
+    href="./manifest.webmanifest"
+  >
+
+  <link
+    rel="apple-touch-icon"
+    href="./icon-192.png"
+  >
+
+  <link
+    rel="stylesheet"
+    href="./styles.css?v=3"
+  >
 </head>
+
 <body>
-  <div class="app-shell">
+
+  <main class="app-shell">
+
+    <!-- =========================
+         HEADER
+    ========================== -->
+
     <header class="topbar">
+
       <div>
-        <div class="eyebrow">WORKING HOURS</div>
-        <h1>9-Day Fortnight</h1>
-        <div id="fortnightRange" class="muted">Set up your fortnight</div>
+        <div class="eyebrow">
+          Working hours
+        </div>
+
+        <h1>
+          9-Day Fortnight
+        </h1>
+
+        <div
+          id="fortnightRange"
+          class="header-subtitle"
+        >
+          Set up your fortnight
+        </div>
       </div>
-      <button id="settingsBtn" class="icon-btn" aria-label="Fortnight setup">⚙︎</button>
+
+      <button
+        id="settingsBtn"
+        class="icon-btn"
+        aria-label="Settings"
+        type="button"
+      >
+        ⚙︎
+      </button>
+
     </header>
 
-    <main>
-      <section id="setupView" class="view">
-        <div class="hero-card">
-          <div class="step">1</div>
-          <div>
-            <h2>Choose your fortnight</h2>
-            <p class="muted">Pick the Monday that starts Week 1, then choose which Friday is your non-working day.</p>
-          </div>
+
+    <!-- =========================
+         SETUP
+    ========================== -->
+
+    <section
+      id="setupView"
+    >
+
+      <div class="hero-card">
+
+        <div class="step">
+          1
         </div>
 
-        <div class="card">
-          <label class="field-label">Week 1 starts</label>
-          <div class="date-row">
-            <button id="prevMonday" class="square-btn" aria-label="Previous Monday">‹</button>
-            <button id="startDateButton" class="date-button"></button>
-            <button id="nextMonday" class="square-btn" aria-label="Next Monday">›</button>
-          </div>
-          <input id="startDateNative" class="visually-hidden-date" type="date" tabindex="-1" aria-hidden="true">
-
-          <label class="field-label gap-top">Which Friday is off?</label>
-          <div class="choice-grid">
-            <button class="choice-btn" data-off="week1">
-              <span class="choice-title">Week 1 Friday</span>
-              <span id="week1FridayLabel" class="choice-date"></span>
-            </button>
-            <button class="choice-btn selected" data-off="week2">
-              <span class="choice-title">Week 2 Friday</span>
-              <span id="week2FridayLabel" class="choice-date"></span>
-            </button>
-          </div>
-          <button id="createFortnightBtn" class="primary-btn">Create fortnight</button>
-        </div>
-
-        <div class="card compact">
-          <div class="mini-grid">
-            <div><span>Target</span><strong>75h</strong></div>
-            <div><span>Working days</span><strong>9</strong></div>
-            <div><span>Day off</span><strong id="setupOffSummary">W2 Fri</strong></div>
-          </div>
-        </div>
-      </section>
-
-      <section id="trackerView" class="view hidden">
-        <div class="segmented">
-          <button class="seg active" data-tab="overview">Overview</button>
-          <button class="seg" data-tab="calendar">Calendar</button>
-        </div>
-
-        <section id="overviewTab">
-          <div class="card progress-card">
-            <div class="card-title-row">
-              <div>
-                <div class="eyebrow">FORTNIGHT PROGRESS</div>
-                <h2 id="progressHeadline">0h of 75h</h2>
-              </div>
-              <div id="progressPercent" class="percent">0%</div>
-            </div>
-            <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
-            <div class="metric-grid">
-              <div class="metric"><span>Worked</span><strong id="workedMetric">0h 00m</strong></div>
-              <div class="metric"><span>Remaining</span><strong id="remainingMetric">75h 00m</strong></div>
-              <div class="metric"><span>Days left</span><strong id="daysLeftMetric">9</strong></div>
-              <div class="metric"><span>Avg needed</span><strong id="avgMetric">8h 20m</strong></div>
-            </div>
-            <div id="paceMessage" class="pace-box"></div>
-          </div>
-
-          <div class="card">
-            <div class="card-title-row">
-              <div>
-                <div class="eyebrow">DAYS</div>
-                <h2>Tap any day to log or edit</h2>
-              </div>
-            </div>
-            <div id="dayList"></div>
-          </div>
-        </section>
-
-        <section id="calendarTab" class="hidden">
-          <div class="card">
-            <div class="eyebrow">FORTNIGHT CALENDAR</div>
-            <h2>Two weeks at a glance</h2>
-            <div id="calendarGrid" class="calendar-grid"></div>
-            <div class="legend">
-              <span><i class="dot logged"></i>Logged</span>
-              <span><i class="dot today"></i>Today</span>
-              <span><i class="dot off"></i>Day off</span>
-            </div>
-          </div>
-        </section>
-      </section>
-    </main>
-  </div>
-
-  <div id="editorSheet" class="sheet-backdrop hidden" role="dialog" aria-modal="true">
-    <div class="sheet">
-      <div class="sheet-handle"></div>
-      <div class="sheet-header">
         <div>
-          <div id="editorWeek" class="eyebrow"></div>
-          <h2 id="editorDate"></h2>
+          <h2>
+            Choose your fortnight
+          </h2>
+
+          <p class="muted">
+            Pick the Monday that starts Week 1,
+            then choose which Friday is your
+            non-working day.
+          </p>
         </div>
-        <button id="closeEditor" class="icon-btn" aria-label="Close">×</button>
+
       </div>
 
-      <div id="offDayPanel" class="off-panel hidden">
-        <div class="off-icon">✓</div>
-        <h3>Non-working day</h3>
-        <p class="muted">This Friday is assigned as your day off for this fortnight.</p>
+
+      <div class="card">
+
+        <label class="field-label">
+          Week 1 starts
+        </label>
+
+        <div class="date-row">
+
+          <button
+            id="prevMonday"
+            class="square-btn"
+            type="button"
+            aria-label="Previous week"
+          >
+            ‹
+          </button>
+
+          <button
+            id="startDateButton"
+            class="date-button"
+            type="button"
+          >
+          </button>
+
+          <button
+            id="nextMonday"
+            class="square-btn"
+            type="button"
+            aria-label="Next week"
+          >
+            ›
+          </button>
+
+          <input
+            id="startDateNative"
+            class="visually-hidden-date"
+            type="date"
+          >
+
+        </div>
+
+
+        <label class="field-label gap-top">
+          Which Friday is off?
+        </label>
+
+        <div class="choice-grid">
+
+          <button
+            class="choice-btn"
+            data-off="week1"
+            type="button"
+          >
+            <span class="choice-title">
+              Week 1 Friday
+            </span>
+
+            <span
+              id="week1FridayLabel"
+              class="choice-date"
+            >
+            </span>
+          </button>
+
+
+          <button
+            class="choice-btn selected"
+            data-off="week2"
+            type="button"
+          >
+            <span class="choice-title">
+              Week 2 Friday
+            </span>
+
+            <span
+              id="week2FridayLabel"
+              class="choice-date"
+            >
+            </span>
+          </button>
+
+        </div>
+
+
+        <button
+          id="createFortnightBtn"
+          class="primary-btn"
+          type="button"
+        >
+          Create fortnight
+        </button>
+
       </div>
 
-      <div id="workDayPanel">
-        <div class="section-label">Quick presets</div>
+
+      <div class="card compact">
+
+        <div class="mini-grid">
+
+          <div>
+            <span>
+              Target
+            </span>
+
+            <strong>
+              75h
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              Working days
+            </span>
+
+            <strong>
+              9
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              Day off
+            </span>
+
+            <strong
+              id="setupOffSummary"
+            >
+              W2 Fri
+            </strong>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================
+         MAIN TRACKER
+    ========================== -->
+
+    <section
+      id="trackerView"
+      class="hidden"
+    >
+
+      <!-- PROGRESS -->
+
+      <section class="card progress-card">
+
+        <div class="card-title-row">
+
+          <div>
+            <div class="section-label">
+              Fortnight progress
+            </div>
+
+            <h2
+              id="progressHeadline"
+              class="progress-headline"
+            >
+              0h 00m of 75h
+            </h2>
+          </div>
+
+          <div
+            id="progressPercent"
+            class="percent"
+          >
+            0%
+          </div>
+
+        </div>
+
+
+        <div class="progress-track">
+
+          <div
+            id="progressBar"
+            class="progress-bar"
+          >
+          </div>
+
+        </div>
+
+
+        <div class="metric-grid">
+
+          <div class="metric">
+            <span>
+              Worked
+            </span>
+
+            <strong
+              id="workedMetric"
+            >
+              0h 00m
+            </strong>
+          </div>
+
+
+          <div class="metric">
+            <span>
+              Remaining
+            </span>
+
+            <strong
+              id="remainingMetric"
+            >
+              75h 00m
+            </strong>
+          </div>
+
+
+          <div class="metric">
+            <span>
+              Days left
+            </span>
+
+            <strong
+              id="daysLeftMetric"
+            >
+              9
+            </strong>
+          </div>
+
+
+          <div class="metric">
+            <span>
+              Avg needed
+            </span>
+
+            <strong
+              id="avgMetric"
+            >
+              8h 20m
+            </strong>
+          </div>
+
+        </div>
+
+
+        <div
+          id="paceMessage"
+          class="pace-box neutral"
+        >
+        </div>
+
+      </section>
+
+
+      <!-- CALENDAR -->
+
+      <section class="card calendar-card">
+
+        <div class="calendar-heading">
+
+          <div>
+            <div class="section-label">
+              Fortnight calendar
+            </div>
+
+            <h2>
+              Tap a day to log or edit
+            </h2>
+          </div>
+
+        </div>
+
+
+        <div
+          id="calendarGrid"
+          class="calendar-grid"
+        >
+        </div>
+
+
+        <div class="legend">
+
+          <span>
+            <i class="dot today"></i>
+            Today
+          </span>
+
+          <span>
+            <i class="dot off"></i>
+            Day off
+          </span>
+
+          <span>
+            <i class="dash"></i>
+            Not logged
+          </span>
+
+        </div>
+
+      </section>
+
+
+      <!-- FORTNIGHT SETTINGS -->
+
+      <section class="card fortnight-settings">
+
+        <div class="section-label">
+          Fortnight settings
+        </div>
+
+
+        <div class="settings-grid">
+
+          <div>
+            <span>
+              Pattern
+            </span>
+
+            <strong>
+              9 working days
+            </strong>
+
+            <small>
+              1 Friday off
+            </small>
+          </div>
+
+
+          <div>
+            <span>
+              Hours per fortnight
+            </span>
+
+            <strong>
+              75 hours
+            </strong>
+          </div>
+
+
+          <div>
+            <span>
+              Default day
+            </span>
+
+            <strong>
+              8h 20m
+            </strong>
+          </div>
+
+        </div>
+
+
+        <button
+          id="manageFortnightBtn"
+          class="manage-btn"
+          type="button"
+        >
+
+          <span class="manage-icon">
+            ◫
+          </span>
+
+          <span>
+            Manage fortnight
+          </span>
+
+          <span class="manage-arrow">
+            ›
+          </span>
+
+        </button>
+
+      </section>
+
+
+      <button
+        id="nextFortnightBtn"
+        class="secondary-action hidden"
+        type="button"
+      >
+        Start next fortnight
+      </button>
+
+    </section>
+
+  </main>
+
+
+  <!-- =========================
+       DAY EDITOR SHEET
+  ========================== -->
+
+  <div
+    id="editorSheet"
+    class="sheet-backdrop hidden"
+  >
+
+    <section
+      id="editorPanel"
+      class="sheet"
+    >
+
+      <div class="sheet-handle"></div>
+
+
+      <header class="sheet-header">
+
+        <button
+          id="closeEditor"
+          class="back-btn"
+          type="button"
+        >
+          ‹ Back
+        </button>
+
+
+        <div class="sheet-title">
+
+          <div
+            id="editorWeek"
+            class="section-label"
+          >
+            Week 1
+          </div>
+
+          <h2
+            id="editorDate"
+          >
+          </h2>
+
+        </div>
+
+      </header>
+
+
+      <!-- OFF DAY -->
+
+      <div
+        id="offDayPanel"
+        class="off-panel hidden"
+      >
+
+        <div class="off-icon">
+          —
+        </div>
+
+        <h2>
+          Non-working day
+        </h2>
+
+        <p class="muted">
+          This Friday is your scheduled
+          day off.
+        </p>
+
+        <button
+          id="closeOffDayBtn"
+          class="primary-btn"
+          type="button"
+        >
+          Back to fortnight
+        </button>
+
+      </div>
+
+
+      <!-- WORKING DAY -->
+
+      <div
+        id="workDayPanel"
+      >
+
+        <div class="section-label">
+          Quick presets
+        </div>
+
+
         <div class="preset-grid">
-          <button class="preset" data-preset="monday">
-            <strong>Mon gym</strong><span>07:30–15:30</span><small>7h 30m</small>
+
+          <button
+            class="preset"
+            data-preset="monday"
+            type="button"
+          >
+            <strong>
+              Mon gym
+            </strong>
+
+            <span>
+              07:30–15:30
+            </span>
+
+            <small>
+              7h 30m
+            </small>
           </button>
-          <button class="preset" data-preset="office">
-            <strong>Office</strong><span>07:30–16:30</span><small>8h 30m</small>
+
+
+          <button
+            class="preset"
+            data-preset="office"
+            type="button"
+          >
+            <strong>
+              Office
+            </strong>
+
+            <span>
+              07:30–16:30
+            </span>
+
+            <small>
+              8h 30m
+            </small>
           </button>
-          <button class="preset" data-preset="cycle">
-            <strong>Cycle</strong><span>07:30–16:00</span><small>8h 00m</small>
+
+
+          <button
+            class="preset"
+            data-preset="cycle"
+            type="button"
+          >
+            <strong>
+              Cycle
+            </strong>
+
+            <span>
+              07:30–16:00
+            </span>
+
+            <small>
+              8h 00m
+            </small>
           </button>
-          <button class="preset" data-preset="wfhLong">
-            <strong>WFH long</strong><span>07:00–16:30</span><small>9h 00m</small>
+
+
+          <button
+            class="preset"
+            data-preset="wfhLong"
+            type="button"
+          >
+            <strong>
+              WFH long
+            </strong>
+
+            <span>
+              07:00–16:30
+            </span>
+
+            <small>
+              9h 00m
+            </small>
           </button>
-          <button class="preset" data-preset="wfhGym">
-            <strong>WFH + gym</strong><span>07:00–16:30</span><small>8h 00m</small>
+
+
+          <button
+            class="preset"
+            data-preset="wfhGym"
+            type="button"
+          >
+            <strong>
+              WFH + gym
+            </strong>
+
+            <span>
+              07:00–16:30
+            </span>
+
+            <small>
+              8h 00m
+            </small>
           </button>
+
         </div>
 
-        <div class="divider"><span>or set your own</span></div>
 
-        <div class="section-label">Start time</div>
-        <div id="startButtons" class="time-grid"></div>
+        <div class="divider">
+          or set your own
+        </div>
 
-        <div class="section-label">Finish time</div>
-        <div id="finishButtons" class="time-grid"></div>
 
-        <div class="section-label">Break</div>
-        <div id="breakButtons" class="break-grid"></div>
+        <div class="section-label">
+          Start time
+        </div>
+
+        <div
+          id="startButtons"
+          class="time-grid"
+        >
+        </div>
+
+
+        <div class="section-label">
+          Finish time
+        </div>
+
+        <div
+          id="finishButtons"
+          class="time-grid"
+        >
+        </div>
+
+
+        <div class="section-label">
+          Break
+        </div>
+
+        <div
+          id="breakButtons"
+          class="break-grid"
+        >
+        </div>
+
 
         <div class="summary-card">
-          <span>Paid hours for this day</span>
-          <strong id="editorPaid">0h 00m</strong>
+
+          <span>
+            Paid hours for this day
+          </span>
+
+          <strong
+            id="editorPaid"
+          >
+            0h 00m
+          </strong>
+
         </div>
-        <div id="dayWarning" class="warning hidden"></div>
 
-        <label class="field-label gap-top">Note <span class="muted">(optional)</span></label>
-        <input id="dayNote" class="text-input" placeholder="Office, WFH, client meeting…">
 
-        <button id="saveDayBtn" class="primary-btn">Save day</button>
-        <button id="clearDayBtn" class="text-btn">Clear this day</button>
+        <label
+          class="field-label gap-top"
+          for="dayNote"
+        >
+          Note
+          <span class="muted">
+            (optional)
+          </span>
+        </label>
+
+        <input
+          id="dayNote"
+          class="text-input"
+          type="text"
+          placeholder="Office, WFH, client meeting..."
+        >
+
+
+        <div
+          id="dayWarning"
+          class="warning hidden"
+        >
+        </div>
+
+
+        <button
+          id="saveDayBtn"
+          class="primary-btn"
+          type="button"
+        >
+          Save day
+        </button>
+
+
+        <button
+          id="clearDayBtn"
+          class="text-btn"
+          type="button"
+        >
+          Clear this day
+        </button>
+
       </div>
-    </div>
+
+    </section>
+
   </div>
 
-  <script src="app.js"></script>
+
+  <!-- =========================
+       MANAGE FORTNIGHT SHEET
+  ========================== -->
+
+  <div
+    id="manageSheet"
+    class="sheet-backdrop hidden"
+  >
+
+    <section class="sheet">
+
+      <div class="sheet-handle"></div>
+
+
+      <header class="sheet-header">
+
+        <button
+          id="closeManage"
+          class="back-btn"
+          type="button"
+        >
+          ‹ Back
+        </button>
+
+
+        <div class="sheet-title">
+
+          <div class="section-label">
+            Fortnight
+          </div>
+
+          <h2>
+            Manage
+          </h2>
+
+        </div>
+
+      </header>
+
+
+      <div class="manage-summary-card">
+
+        <span>
+          Current fortnight
+        </span>
+
+        <strong
+          id="manageRange"
+        >
+        </strong>
+
+        <small
+          id="manageDayOff"
+        >
+        </small>
+
+      </div>
+
+
+      <button
+        id="startNextBtn"
+        class="primary-btn"
+        type="button"
+      >
+        Start next fortnight
+      </button>
+
+
+      <button
+        id="changeSetupBtn"
+        class="secondary-btn"
+        type="button"
+      >
+        Change current setup
+      </button>
+
+    </section>
+
+  </div>
+
+
+  <script src="./app.js?v=3"></script>
+
 </body>
 </html>
