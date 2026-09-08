@@ -2150,12 +2150,27 @@ function renderTimePicker(
             }
 
             renderEditorValues();
-            renderTimePicker(
-              type
-            );
-
             detectPreset();
             refreshEditorTotal();
+
+            if (
+              type ===
+              "start"
+            ) {
+              el(
+                "startTimePicker"
+              ).classList.add(
+                "hidden"
+              );
+            }
+
+            else {
+              el(
+                "finishTimePicker"
+              ).classList.add(
+                "hidden"
+              );
+            }
           }
         );
       }
@@ -2856,29 +2871,7 @@ function bindEvents() {
 
             refreshEditorTotal();
 
-            if (
-              !el(
-                "startTimePicker"
-              ).classList.contains(
-                "hidden"
-              )
-            ) {
-              renderTimePicker(
-                "start"
-              );
-            }
-
-            if (
-              !el(
-                "finishTimePicker"
-              ).classList.contains(
-                "hidden"
-              )
-            ) {
-              renderTimePicker(
-                "finish"
-              );
-            }
+            closeTimePickers();
           }
         );
       }
