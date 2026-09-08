@@ -40,25 +40,44 @@ const presets = {
   }
 };
 
-const startOptions = [
-  "06:30",
-  "07:00",
-  "07:30",
-  "08:00"
-];
-
-const finishOptions = [
-  "15:30",
-  "16:00",
-  "16:30",
-  "17:00"
-];
-
 const breakOptions = [
   30,
+  45,
   60,
+  75,
   90
 ];
+
+const defaultStartRange = {
+  min: 6 * 60,
+  max: 10 * 60
+};
+
+const defaultFinishRange = {
+  min: 15 * 60,
+  max: 18 * 60
+};
+
+const ABSOLUTE_MIN_TIME = 0;
+const ABSOLUTE_MAX_TIME = 23 * 60 + 45;
+const RANGE_STEP = 60;
+
+let startRange = {
+  ...defaultStartRange
+};
+
+let finishRange = {
+  ...defaultFinishRange
+};
+
+let editorStart = "07:30";
+let editorFinish = "16:30";
+let editorBreak = 30;
+
+
+/* =========================
+   HELPERS
+========================= */
 
 function el(id) {
   return document.getElementById(id);
@@ -165,7 +184,7 @@ function fmtDate(
 
 
 /* =========================
-   HOURS
+   TIME HELPERS
 ========================= */
 
 function timeToMin(value) {
@@ -178,10 +197,97 @@ function timeToMin(value) {
       .split(":")
       .map(Number);
 
+  if (
+    parts.length !== 2 ||
+    parts.some(Number.isNaN)
+  ) {
+    return null;
+  }
+
   return (
     parts[0] * 60 +
     parts[1]
   );
+}
+
+function minToTime(minutes) {
+  const safe =
+    Math.max(
+      ABSOLUTE_MIN_TIME,
+      Math.min(
+        ABSOLUTE_MAX_TIME,
+        Math.round(
+          minutes / 15
+        ) * 15
+      )
+    );
+
+  const hours =
+    Math.floor(
+      safe / 60
+    );
+
+  const mins =
+    safe % 60;
+
+  return `${pad(hours)}:${pad(mins)}`;
+}
+
+function buildTimeOptions(
+  min,
+  max
+) {
+  const options = [];
+
+  for (
+    let value = min;
+    value <= max;
+    value += 15
+  ) {
+    options.push(
+      minToTime(value)
+    );
+  }
+
+  return options;
+}
+
+function ensureTimeInRange(
+  value,
+  range
+) {
+  const minutes =
+    timeToMin(value);
+
+  if (
+    minutes === null
+  ) {
+    return;
+  }
+
+  if (
+    minutes < range.min
+  ) {
+    range.min =
+      Math.max(
+        ABSOLUTE_MIN_TIME,
+        Math.floor(
+          minutes / RANGE_STEP
+        ) * RANGE_STEP
+      );
+  }
+
+  if (
+    minutes > range.max
+  ) {
+    range.max =
+      Math.min(
+        ABSOLUTE_MAX_TIME,
+        Math.ceil(
+          minutes / RANGE_STEP
+        ) * RANGE_STEP
+      );
+  }
 }
 
 function rawPaidMinutes(day) {
@@ -204,6 +310,8 @@ function rawPaidMinutes(day) {
     );
 
   if (
+    start === null ||
+    finish === null ||
     finish <= start
   ) {
     return 0;
@@ -1818,55 +1926,13 @@ function returnToCurrent() {
 
 
 /* =========================
-   EDITOR
+   DAY EDITOR
 ========================= */
-
-function renderOptionButtons(
-  containerId,
-  options,
-  value,
-  kind
-) {
-  el(
-    containerId
-  ).innerHTML =
-    options
-      .map(
-        option => {
-          const selected =
-            String(option) ===
-            String(value)
-              ? "selected"
-              : "";
-
-          const className =
-            kind === "break"
-              ? "break-btn"
-              : "time-btn";
-
-          const label =
-            kind === "break"
-              ? `${option}m`
-              : option;
-
-          return `
-            <button
-              class="${className} ${selected}"
-              data-value="${option}"
-              type="button"
-            >
-              ${label}
-            </button>
-          `;
-        }
-      )
-      .join("");
-}
 
 function clearPresetSelection() {
   document
     .querySelectorAll(
-      ".preset"
+      ".quick-preset"
     )
     .forEach(
       button =>
@@ -1878,38 +1944,377 @@ function clearPresetSelection() {
     );
 }
 
+function setPresetSelection(
+  key
+) {
+  clearPresetSelection();
+
+  const button =
+    document.querySelector(
+      `.quick-preset[data-preset="${key}"]`
+    );
+
+  if (button) {
+    button
+      .classList
+      .add(
+        "selected"
+      );
+  }
+}
+
+function detectPreset() {
+  for (
+    const [
+      key,
+      preset
+    ] of Object.entries(
+      presets
+    )
+  ) {
+    if (
+      editorStart ===
+        preset.start &&
+      editorFinish ===
+        preset.finish &&
+      Number(
+        editorBreak
+      ) ===
+        preset.break
+    ) {
+      setPresetSelection(
+        key
+      );
+
+      return;
+    }
+  }
+
+  clearPresetSelection();
+}
+
+function renderBreakButtons() {
+  el(
+    "breakButtons"
+  ).innerHTML =
+    breakOptions
+      .map(
+        option => `
+          <button
+            class="break-btn ${
+              Number(option) ===
+              Number(editorBreak)
+                ? "selected"
+                : ""
+            }"
+            data-break="${option}"
+            type="button"
+          >
+            ${option}m
+          </button>
+        `
+      )
+      .join("");
+
+  el(
+    "breakButtons"
+  )
+    .querySelectorAll(
+      "[data-break]"
+    )
+    .forEach(
+      button => {
+        button.addEventListener(
+          "click",
+          () => {
+            editorBreak =
+              Number(
+                button.dataset.break
+              );
+
+            renderBreakButtons();
+            detectPreset();
+            refreshEditorTotal();
+          }
+        );
+      }
+    );
+}
+
+function renderTimePicker(
+  type
+) {
+  const isStart =
+    type === "start";
+
+  const range =
+    isStart
+      ? startRange
+      : finishRange;
+
+  const value =
+    isStart
+      ? editorStart
+      : editorFinish;
+
+  ensureTimeInRange(
+    value,
+    range
+  );
+
+  const grid =
+    el(
+      isStart
+        ? "startButtons"
+        : "finishButtons"
+    );
+
+  const label =
+    el(
+      isStart
+        ? "startTimeRange"
+        : "finishTimeRange"
+    );
+
+  const earlierButton =
+    el(
+      isStart
+        ? "earlierStartBtn"
+        : "earlierFinishBtn"
+    );
+
+  const laterButton =
+    el(
+      isStart
+        ? "laterStartBtn"
+        : "laterFinishBtn"
+    );
+
+  label.textContent =
+    `${
+      minToTime(
+        range.min
+      )
+    }–${
+      minToTime(
+        range.max
+      )
+    }`;
+
+  const options =
+    buildTimeOptions(
+      range.min,
+      range.max
+    );
+
+  grid.innerHTML =
+    options
+      .map(
+        option => `
+          <button
+            class="time-btn ${
+              option === value
+                ? "selected"
+                : ""
+            }"
+            data-time="${option}"
+            data-time-type="${type}"
+            type="button"
+          >
+            ${option}
+          </button>
+        `
+      )
+      .join("");
+
+  grid
+    .querySelectorAll(
+      "[data-time]"
+    )
+    .forEach(
+      button => {
+        button.addEventListener(
+          "click",
+          () => {
+            if (
+              type ===
+              "start"
+            ) {
+              editorStart =
+                button.dataset.time;
+            }
+
+            else {
+              editorFinish =
+                button.dataset.time;
+            }
+
+            renderEditorValues();
+            renderTimePicker(
+              type
+            );
+
+            detectPreset();
+            refreshEditorTotal();
+          }
+        );
+      }
+    );
+
+  earlierButton.disabled =
+    range.min <=
+    ABSOLUTE_MIN_TIME;
+
+  laterButton.disabled =
+    range.max >=
+    ABSOLUTE_MAX_TIME;
+}
+
+function renderEditorValues() {
+  el(
+    "startTimeValue"
+  ).textContent =
+    editorStart;
+
+  el(
+    "finishTimeValue"
+  ).textContent =
+    editorFinish;
+
+  renderBreakButtons();
+}
+
+function closeTimePickers() {
+  el(
+    "startTimePicker"
+  ).classList.add(
+    "hidden"
+  );
+
+  el(
+    "finishTimePicker"
+  ).classList.add(
+    "hidden"
+  );
+}
+
+function openTimePicker(
+  type
+) {
+  const startPanel =
+    el(
+      "startTimePicker"
+    );
+
+  const finishPanel =
+    el(
+      "finishTimePicker"
+    );
+
+  if (
+    type ===
+    "start"
+  ) {
+    const opening =
+      startPanel.classList.contains(
+        "hidden"
+      );
+
+    finishPanel.classList.add(
+      "hidden"
+    );
+
+    if (opening) {
+      renderTimePicker(
+        "start"
+      );
+
+      startPanel.classList.remove(
+        "hidden"
+      );
+    }
+
+    else {
+      startPanel.classList.add(
+        "hidden"
+      );
+    }
+  }
+
+  else {
+    const opening =
+      finishPanel.classList.contains(
+        "hidden"
+      );
+
+    startPanel.classList.add(
+      "hidden"
+    );
+
+    if (opening) {
+      renderTimePicker(
+        "finish"
+      );
+
+      finishPanel.classList.remove(
+        "hidden"
+      );
+    }
+
+    else {
+      finishPanel.classList.add(
+        "hidden"
+      );
+    }
+  }
+}
+
+function expandTimeRange(
+  type,
+  direction
+) {
+  const range =
+    type === "start"
+      ? startRange
+      : finishRange;
+
+  if (
+    direction <
+    0
+  ) {
+    range.min =
+      Math.max(
+        ABSOLUTE_MIN_TIME,
+        range.min -
+        RANGE_STEP
+      );
+  }
+
+  else {
+    range.max =
+      Math.min(
+        ABSOLUTE_MAX_TIME,
+        range.max +
+        RANGE_STEP
+      );
+  }
+
+  renderTimePicker(
+    type
+  );
+}
+
 function editorValue() {
-  const start =
-    document.querySelector(
-      "#startButtons .selected"
-    );
-
-  const finish =
-    document.querySelector(
-      "#finishButtons .selected"
-    );
-
-  const breakButton =
-    document.querySelector(
-      "#breakButtons .selected"
-    );
-
   return {
     start:
-      start
-        ? start.dataset.value
-        : "",
+      editorStart,
 
     finish:
-      finish
-        ? finish.dataset.value
-        : "",
+      editorFinish,
 
     break:
       Number(
-        breakButton
-          ? breakButton.dataset.value
-          : 30
+        editorBreak
       ),
 
     note:
@@ -1923,12 +2328,10 @@ function editorValue() {
 
 function refreshEditorTotal() {
   const temp =
-    Object.assign(
-      {
-        off: false
-      },
-      editorValue()
-    );
+    {
+      off: false,
+      ...editorValue()
+    };
 
   const paid =
     rawPaidMinutes(
@@ -1948,15 +2351,20 @@ function refreshEditorTotal() {
   let text =
     "";
 
-  if (
-    temp.start &&
-    temp.finish &&
-    timeToMin(
-      temp.finish
-    ) <=
+  const start =
     timeToMin(
       temp.start
-    )
+    );
+
+  const finish =
+    timeToMin(
+      temp.finish
+    );
+
+  if (
+    start !== null &&
+    finish !== null &&
+    finish <= start
   ) {
     text =
       "Finish time must be later than start time.";
@@ -1984,49 +2392,6 @@ function refreshEditorTotal() {
     "hidden",
     !text
   );
-}
-
-function bindChoiceButtons(
-  containerId
-) {
-  el(
-    containerId
-  )
-    .querySelectorAll(
-      "button"
-    )
-    .forEach(
-      button => {
-        button.addEventListener(
-          "click",
-          () => {
-            el(
-              containerId
-            )
-              .querySelectorAll(
-                "button"
-              )
-              .forEach(
-                item =>
-                  item
-                    .classList
-                    .remove(
-                      "selected"
-                    )
-              );
-
-            button
-              .classList
-              .add(
-                "selected"
-              );
-
-            clearPresetSelection();
-            refreshEditorTotal();
-          }
-        );
-      }
-    );
 }
 
 function resetEditorScroll() {
@@ -2108,40 +2473,38 @@ function openEditor(index) {
     return;
   }
 
-  renderOptionButtons(
-    "startButtons",
-    startOptions,
+  closeTimePickers();
+
+  startRange = {
+    ...defaultStartRange
+  };
+
+  finishRange = {
+    ...defaultFinishRange
+  };
+
+  editorStart =
     day.start ||
-    "07:30",
-    "time"
-  );
+    "07:30";
 
-  renderOptionButtons(
-    "finishButtons",
-    finishOptions,
+  editorFinish =
     day.finish ||
-    "16:30",
-    "time"
+    "16:30";
+
+  editorBreak =
+    Number(
+      day.break ||
+      30
+    );
+
+  ensureTimeInRange(
+    editorStart,
+    startRange
   );
 
-  renderOptionButtons(
-    "breakButtons",
-    breakOptions,
-    day.break ||
-    30,
-    "break"
-  );
-
-  bindChoiceButtons(
-    "startButtons"
-  );
-
-  bindChoiceButtons(
-    "finishButtons"
-  );
-
-  bindChoiceButtons(
-    "breakButtons"
+  ensureTimeInRange(
+    editorFinish,
+    finishRange
   );
 
   el(
@@ -2150,49 +2513,8 @@ function openEditor(index) {
     day.note ||
     "";
 
-  clearPresetSelection();
-
-  Object
-    .keys(
-      presets
-    )
-    .some(
-      key => {
-        const preset =
-          presets[key];
-
-        if (
-          day.start ===
-          preset.start &&
-          day.finish ===
-          preset.finish &&
-          Number(
-            day.break
-          ) ===
-          preset.break
-        ) {
-          const button =
-            document.querySelector(
-              `.preset[data-preset="${key}"]`
-            );
-
-          if (
-            button
-          ) {
-            button
-              .classList
-              .add(
-                "selected"
-              );
-          }
-
-          return true;
-        }
-
-        return false;
-      }
-    );
-
+  renderEditorValues();
+  detectPreset();
   refreshEditorTotal();
 }
 
@@ -2205,6 +2527,8 @@ function closeEditor() {
 
   document.body.style.overflow =
     "";
+
+  closeTimePickers();
 
   editingIndex =
     null;
@@ -2486,65 +2810,75 @@ function bindEvents() {
 
   document
     .querySelectorAll(
-      ".preset"
+      ".quick-preset"
     )
     .forEach(
       button => {
         button.addEventListener(
           "click",
           () => {
+            const key =
+              button.dataset.preset;
+
             const preset =
               presets[
-                button.dataset.preset
+                key
               ];
 
-            clearPresetSelection();
+            editorStart =
+              preset.start;
 
-            button
-              .classList
-              .add(
-                "selected"
-              );
+            editorFinish =
+              preset.finish;
 
-            renderOptionButtons(
-              "startButtons",
-              startOptions,
-              preset.start,
-              "time"
-            );
-
-            renderOptionButtons(
-              "finishButtons",
-              finishOptions,
-              preset.finish,
-              "time"
-            );
-
-            renderOptionButtons(
-              "breakButtons",
-              breakOptions,
-              preset.break,
-              "break"
-            );
-
-            bindChoiceButtons(
-              "startButtons"
-            );
-
-            bindChoiceButtons(
-              "finishButtons"
-            );
-
-            bindChoiceButtons(
-              "breakButtons"
-            );
+            editorBreak =
+              preset.break;
 
             el(
               "dayNote"
             ).value =
               preset.note;
 
+            ensureTimeInRange(
+              editorStart,
+              startRange
+            );
+
+            ensureTimeInRange(
+              editorFinish,
+              finishRange
+            );
+
+            renderEditorValues();
+            setPresetSelection(
+              key
+            );
+
             refreshEditorTotal();
+
+            if (
+              !el(
+                "startTimePicker"
+              ).classList.contains(
+                "hidden"
+              )
+            ) {
+              renderTimePicker(
+                "start"
+              );
+            }
+
+            if (
+              !el(
+                "finishTimePicker"
+              ).classList.contains(
+                "hidden"
+              )
+            ) {
+              renderTimePicker(
+                "finish"
+              );
+            }
           }
         );
       }
@@ -2552,10 +2886,109 @@ function bindEvents() {
 
 
   el(
+    "startTimeRow"
+  ).addEventListener(
+    "click",
+    () =>
+      openTimePicker(
+        "start"
+      )
+  );
+
+
+  el(
+    "finishTimeRow"
+  ).addEventListener(
+    "click",
+    () =>
+      openTimePicker(
+        "finish"
+      )
+  );
+
+
+  el(
+    "closeStartTimePicker"
+  ).addEventListener(
+    "click",
+    () =>
+      el(
+        "startTimePicker"
+      ).classList.add(
+        "hidden"
+      )
+  );
+
+
+  el(
+    "closeFinishTimePicker"
+  ).addEventListener(
+    "click",
+    () =>
+      el(
+        "finishTimePicker"
+      ).classList.add(
+        "hidden"
+      )
+  );
+
+
+  el(
+    "earlierStartBtn"
+  ).addEventListener(
+    "click",
+    () =>
+      expandTimeRange(
+        "start",
+        -1
+      )
+  );
+
+
+  el(
+    "laterStartBtn"
+  ).addEventListener(
+    "click",
+    () =>
+      expandTimeRange(
+        "start",
+        1
+      )
+  );
+
+
+  el(
+    "earlierFinishBtn"
+  ).addEventListener(
+    "click",
+    () =>
+      expandTimeRange(
+        "finish",
+        -1
+      )
+  );
+
+
+  el(
+    "laterFinishBtn"
+  ).addEventListener(
+    "click",
+    () =>
+      expandTimeRange(
+        "finish",
+        1
+      )
+  );
+
+
+  el(
     "dayNote"
   ).addEventListener(
     "input",
-    refreshEditorTotal
+    () => {
+      clearPresetSelection();
+      refreshEditorTotal();
+    }
   );
 
 
