@@ -1,912 +1,2419 @@
-:root{
-  --bg:#0d0f12;
-  --panel:#171a1f;
-  --panel2:#20242b;
-  --panel3:#101317;
-  --line:#30353e;
-  --text:#f6f7f8;
-  --muted:#9da4af;
-  --orange:#ff8614;
-  --orange2:#ffa03d;
-  --green:#55d98b;
-  --red:#ff7474;
-  --shadow:0 20px 55px rgba(0,0,0,.35);
+const TARGET = 75 * 60;
+
+const CURRENT_KEY = "fortnightTracker.v3";
+const HISTORY_KEY = "fortnightTracker.history.v1";
+
+const presets = {
+  monday: {
+    start: "07:30",
+    finish: "15:30",
+    break: 30,
+    note: "Mon gym"
+  },
+
+  office: {
+    start: "07:30",
+    finish: "16:30",
+    break: 30,
+    note: "Office"
+  },
+
+  cycle: {
+    start: "07:30",
+    finish: "16:00",
+    break: 30,
+    note: "Cycle / office"
+  },
+
+  wfhLong: {
+    start: "07:00",
+    finish: "16:30",
+    break: 30,
+    note: "WFH long"
+  },
+
+  wfhGym: {
+    start: "07:00",
+    finish: "16:30",
+    break: 90,
+    note: "WFH + gym"
+  }
+};
+
+const startOptions = [
+  "06:30",
+  "07:00",
+  "07:30",
+  "08:00"
+];
+
+const finishOptions = [
+  "15:30",
+  "16:00",
+  "16:30",
+  "17:00"
+];
+
+const breakOptions = [
+  30,
+  60,
+  90
+];
+
+function el(id) {
+  return document.getElementById(id);
 }
 
-*{
-  box-sizing:border-box;
+function pad(value) {
+  return String(value).padStart(2, "0");
 }
 
-html{
-  background:var(--bg);
+function clone(value) {
+  return JSON.parse(
+    JSON.stringify(value)
+  );
 }
 
-body{
-  margin:0;
-  background:var(--bg);
-  color:var(--text);
-  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;
+
+/* =========================
+   DATES
+========================= */
+
+function localISO(date) {
+  return `${date.getFullYear()}-${pad(
+    date.getMonth() + 1
+  )}-${pad(date.getDate())}`;
 }
 
-button,
-input{
-  font:inherit;
+function parseISO(value) {
+  if (!value) {
+    return new Date();
+  }
+
+  const parts =
+    value
+      .split("-")
+      .map(Number);
+
+  if (
+    parts.length !== 3 ||
+    parts.some(Number.isNaN)
+  ) {
+    return new Date();
+  }
+
+  return new Date(
+    parts[0],
+    parts[1] - 1,
+    parts[2],
+    12,
+    0,
+    0
+  );
 }
 
-button{
-  -webkit-tap-highlight-color:transparent;
+function addDays(
+  value,
+  amount
+) {
+  const date =
+    parseISO(value);
+
+  date.setDate(
+    date.getDate() +
+    amount
+  );
+
+  return localISO(date);
 }
 
-h1,
-h2,
-h3,
-p{
-  margin-top:0;
+function mondayOf(value) {
+  const date =
+    value instanceof Date
+      ? new Date(value)
+      : parseISO(value);
+
+  const weekday =
+    date.getDay();
+
+  date.setDate(
+    date.getDate() +
+    (
+      weekday === 0
+        ? -6
+        : 1 - weekday
+    )
+  );
+
+  return localISO(date);
 }
 
-h1{
-  font-size:30px;
-  line-height:1.05;
-  letter-spacing:-.04em;
-  margin-bottom:5px;
-}
-
-h2{
-  font-size:20px;
-  letter-spacing:-.025em;
-  margin-bottom:5px;
-}
-
-h3{
-  margin-bottom:6px;
-}
-
-.app-shell{
-  max-width:760px;
-  margin:0 auto;
-  padding:
-    calc(18px + env(safe-area-inset-top))
-    16px
-    calc(36px + env(safe-area-inset-bottom));
-}
-
-.topbar{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:16px;
-  margin-bottom:22px;
-}
-
-.header-main{
-  min-width:0;
-  flex:1;
-}
-
-.header-subtitle{
-  color:var(--muted);
-  font-size:17px;
-}
-
-.eyebrow,
-.section-label{
-  font-size:11px;
-  font-weight:800;
-  letter-spacing:.1em;
-  color:var(--muted);
-  text-transform:uppercase;
-}
-
-.muted{
-  color:var(--muted);
-}
-
-.hidden{
-  display:none!important;
-}
-
-.card,
-.hero-card{
-  background:var(--panel);
-  border:1px solid var(--line);
-  border-radius:20px;
-  padding:17px;
-  margin-bottom:14px;
-  box-shadow:
-    0 1px 0 rgba(255,255,255,.02) inset;
-}
-
-.hero-card{
-  display:flex;
-  gap:14px;
-  align-items:flex-start;
-}
-
-.step{
-  background:var(--orange);
-  color:#121212;
-  border-radius:50%;
-  width:34px;
-  height:34px;
-  display:grid;
-  place-items:center;
-  font-weight:900;
-  flex:0 0 34px;
-}
-
-.icon-btn,
-.square-btn{
-  border:1px solid var(--line);
-  background:var(--panel2);
-  color:var(--text);
-  border-radius:12px;
-  min-width:44px;
-  height:44px;
-  font-size:24px;
-}
-
-.date-row{
-  display:grid;
-  grid-template-columns:44px minmax(0,1fr) 44px;
-  gap:8px;
-  align-items:center;
-}
-
-.date-button{
-  border:1px solid var(--line);
-  background:var(--panel3);
-  color:var(--text);
-  border-radius:12px;
-  min-height:48px;
-  padding:10px 10px;
-  text-align:center;
-  font-weight:700;
-  font-size:14px;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-
-.visually-hidden-date{
-  position:absolute;
-  opacity:0;
-  pointer-events:none;
-}
-
-.field-label{
-  display:block;
-  margin-bottom:7px;
-}
-
-.gap-top{
-  margin-top:16px;
-}
-
-.choice-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:9px;
-}
-
-.choice-btn{
-  border:1px solid var(--line);
-  background:var(--panel2);
-  color:var(--text);
-  border-radius:14px;
-  padding:14px 10px;
-  min-height:78px;
-}
-
-.choice-btn.selected{
-  background:var(--orange);
-  border-color:var(--orange);
-  color:#111;
-}
-
-.choice-title{
-  display:block;
-  font-weight:800;
-}
-
-.choice-date{
-  display:block;
-  font-size:13px;
-  margin-top:4px;
-  opacity:.85;
-}
-
-.primary-btn{
-  width:100%;
-  border:0;
-  border-radius:14px;
-  min-height:50px;
-  background:var(--orange);
-  color:#111;
-  font-weight:900;
-  font-size:16px;
-  margin-top:16px;
-}
-
-.secondary-btn{
-  width:100%;
-  border:1px solid var(--line);
-  border-radius:14px;
-  min-height:50px;
-  background:var(--panel2);
-  color:var(--text);
-  font-weight:800;
-  font-size:16px;
-  margin-top:10px;
-}
-
-.secondary-action{
-  width:100%;
-  border:1px solid var(--orange);
-  border-radius:14px;
-  min-height:50px;
-  background:transparent;
-  color:var(--orange);
-  font-weight:900;
-  font-size:16px;
-  margin-top:14px;
-}
-
-.text-btn{
-  width:100%;
-  border:0;
-  background:transparent;
-  color:var(--muted);
-  min-height:44px;
-  margin-top:4px;
-}
-
-.compact{
-  padding:12px 16px;
-}
-
-.mini-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  text-align:center;
-}
-
-.mini-grid div{
-  border-right:1px solid var(--line);
-}
-
-.mini-grid div:last-child{
-  border-right:0;
-}
-
-.mini-grid span{
-  display:block;
-  color:var(--muted);
-  font-size:11px;
-}
-
-.mini-grid strong{
-  display:block;
-  margin-top:4px;
-}
-
-/* Fortnight navigation */
-
-.fortnight-nav{
-  display:grid;
-  grid-template-columns:34px minmax(0,1fr) 34px;
-  align-items:center;
-  gap:6px;
-  margin-top:7px;
-  max-width:330px;
-}
-
-.nav-arrow{
-  width:34px;
-  height:34px;
-  border:1px solid var(--line);
-  border-radius:10px;
-  background:var(--panel2);
-  color:var(--text);
-  font-size:22px;
-  line-height:1;
-  display:grid;
-  place-items:center;
-  padding:0;
-}
-
-.nav-arrow:disabled{
-  opacity:.25;
-}
-
-.fortnight-range-wrap{
-  min-width:0;
-  text-align:center;
-}
-
-.fortnight-range-wrap .header-subtitle{
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-
-.past-badge{
-  display:inline-block;
-  margin-top:4px;
-  padding:3px 8px;
-  border-radius:99px;
-  background:rgba(255,134,20,.12);
-  border:1px solid rgba(255,134,20,.35);
-  color:var(--orange);
-  font-size:10px;
-  font-weight:800;
-  letter-spacing:.04em;
-  text-transform:uppercase;
-}
-
-.return-current{
-  width:100%;
-  border:1px solid rgba(255,134,20,.45);
-  background:rgba(255,134,20,.08);
-  color:var(--orange);
-  border-radius:14px;
-  min-height:46px;
-  font-weight:800;
-  margin-bottom:14px;
-}
-
-/* Progress */
-
-.card-title-row{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:12px;
-}
-
-.progress-card{
-  padding:18px;
-}
-
-.progress-headline{
-  margin-top:4px;
-}
-
-.percent{
-  font-size:22px;
-  font-weight:900;
-  color:var(--orange);
-}
-
-.progress-track{
-  height:10px;
-  background:var(--panel2);
-  border-radius:99px;
-  overflow:hidden;
-  margin:14px 0;
-}
-
-.progress-bar{
-  height:100%;
-  width:0;
-  background:
-    linear-gradient(
-      90deg,
-      var(--orange),
-      var(--orange2)
+function fmtDate(
+  value,
+  options
+) {
+  return parseISO(value)
+    .toLocaleDateString(
+      "en-GB",
+      options || {
+        weekday: "short",
+        day: "numeric",
+        month: "short"
+      }
     );
-  border-radius:99px;
-  transition:width .25s ease;
 }
 
-.metric-grid{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:9px;
-}
-
-.metric{
-  background:var(--panel3);
-  border-radius:14px;
-  padding:12px;
-}
-
-.metric span{
-  display:block;
-  color:var(--muted);
-  font-size:11px;
-}
-
-.metric strong{
-  display:block;
-  font-size:20px;
-  margin-top:3px;
-}
-
-.pace-box{
-  margin-top:12px;
-  border:1px solid var(--line);
-  background:var(--panel3);
-  border-radius:14px;
-  padding:12px;
-  font-size:13px;
-  line-height:1.45;
-}
-
-.pace-box.neutral{
-  border-color:var(--line);
-  background:var(--panel3);
-}
-
-.pace-box.good{
-  border-color:rgba(85,217,139,.45);
-  background:rgba(85,217,139,.08);
-}
-
-.pace-box.warn{
-  border-color:rgba(255,134,20,.45);
-  background:rgba(255,134,20,.08);
-}
-
-/* Calendar */
-
-.calendar-card{
-  padding:18px;
-}
-
-.calendar-card h2{
-  margin-top:4px;
-  margin-bottom:0;
-}
-
-.calendar-grid{
-  display:grid;
-  grid-template-columns:repeat(5,1fr);
-  gap:8px;
-  margin-top:16px;
-}
-
-.cal-cell{
-  min-height:86px;
-  background:var(--panel3);
-  border:1px solid var(--line);
-  border-radius:13px;
-  padding:9px;
-  position:relative;
-  color:var(--text);
-  text-align:left;
-}
-
-.cal-cell.today{
-  outline:2px solid var(--orange);
-}
-
-.cal-cell.off{
-  opacity:.58;
-}
-
-.cal-cell.logged{
-  border-color:rgba(255,134,20,.45);
-}
-
-.cal-cell .dow{
-  font-size:10px;
-  color:var(--muted);
-  text-transform:uppercase;
-  white-space:nowrap;
-}
-
-.cal-cell .date{
-  font-size:18px;
-  font-weight:900;
-  margin-top:2px;
-}
-
-.cal-cell .cal-hours{
-  position:absolute;
-  bottom:8px;
-  left:9px;
-  font-size:11px;
-  color:var(--orange);
-  white-space:nowrap;
-}
-
-.legend{
-  display:flex;
-  gap:14px;
-  flex-wrap:wrap;
-  margin-top:14px;
-  color:var(--muted);
-  font-size:12px;
-}
-
-.dot{
-  display:inline-block;
-  width:8px;
-  height:8px;
-  border-radius:50%;
-  margin-right:5px;
-  background:var(--line);
-}
-
-.dot.today{
-  background:var(--orange);
-}
-
-.dot.off{
-  background:#68707d;
-}
-
-.dash{
-  display:inline-block;
-  margin-right:5px;
-  color:var(--muted);
-}
-
-.dash::before{
-  content:"—";
-}
-
-/* Settings */
-
-.fortnight-settings{
-  padding:18px;
-}
-
-.settings-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:0;
-  margin-top:14px;
-}
-
-.settings-grid > div{
-  padding:0 12px;
-  border-right:1px solid var(--line);
-}
-
-.settings-grid > div:first-child{
-  padding-left:0;
-}
-
-.settings-grid > div:last-child{
-  padding-right:0;
-  border-right:0;
-}
-
-.settings-grid span{
-  display:block;
-  color:var(--muted);
-  font-size:11px;
-}
-
-.settings-grid strong{
-  display:block;
-  margin-top:4px;
-  font-size:15px;
-}
-
-.settings-grid small{
-  display:block;
-  color:var(--muted);
-  font-size:11px;
-  margin-top:2px;
-}
-
-.manage-btn{
-  width:100%;
-  min-height:56px;
-  margin-top:18px;
-  padding:0 14px;
-  display:grid;
-  grid-template-columns:auto 1fr auto;
-  align-items:center;
-  gap:12px;
-  border:1px solid var(--line);
-  border-radius:14px;
-  background:var(--panel3);
-  color:var(--text);
-  font-weight:800;
-  text-align:left;
-}
-
-.manage-icon{
-  font-size:20px;
-  color:var(--orange);
-}
-
-.manage-arrow{
-  font-size:28px;
-  color:var(--muted);
-  line-height:1;
-}
-
-/* Sheets */
-
-.sheet-backdrop{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.66);
-  display:flex;
-  align-items:flex-end;
-  justify-content:center;
-  z-index:20;
-}
-
-.sheet{
-  width:min(760px,100%);
-  max-height:92dvh;
-  overflow:auto;
-  background:#111419;
-  border:1px solid var(--line);
-  border-bottom:0;
-  border-radius:24px 24px 0 0;
-  padding:
-    10px
-    16px
-    calc(22px + env(safe-area-inset-bottom));
-  box-shadow:var(--shadow);
-  overscroll-behavior:contain;
-}
-
-.sheet-handle{
-  width:42px;
-  height:5px;
-  border-radius:99px;
-  background:#555c67;
-  margin:0 auto 10px;
-}
-
-.sheet-header{
-  display:grid;
-  grid-template-columns:auto 1fr auto;
-  align-items:start;
-  gap:12px;
-  margin-bottom:16px;
-}
-
-.back-btn{
-  border:0;
-  background:transparent;
-  color:var(--orange);
-  min-height:44px;
-  padding:0;
-  font-weight:800;
-  font-size:16px;
-}
-
-.sheet-title{
-  text-align:center;
-}
-
-.sheet-title h2{
-  margin-top:3px;
-}
-
-.preset-grid{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:8px;
-  margin-top:8px;
-}
-
-.preset{
-  border:1px solid var(--line);
-  background:var(--panel2);
-  color:var(--text);
-  border-radius:14px;
-  min-height:82px;
-  padding:11px;
-}
-
-.preset strong,
-.preset span,
-.preset small{
-  display:block;
-}
-
-.preset span{
-  font-size:12px;
-  margin-top:3px;
-}
-
-.preset small{
-  font-size:11px;
-  color:var(--muted);
-  margin-top:2px;
-}
-
-.preset.selected,
-.time-btn.selected,
-.break-btn.selected{
-  background:var(--orange);
-  border-color:var(--orange);
-  color:#111;
-}
-
-.preset.selected small{
-  color:#31200f;
-}
-
-.divider{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  color:var(--muted);
-  font-size:11px;
-  margin:17px 0;
-}
-
-.divider::before,
-.divider::after{
-  content:"";
-  height:1px;
-  background:var(--line);
-  flex:1;
-}
-
-.time-grid{
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:8px;
-  margin:8px 0 15px;
-}
-
-.break-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:8px;
-  margin:8px 0 15px;
-}
-
-.time-btn,
-.break-btn{
-  border:1px solid var(--line);
-  background:var(--panel2);
-  color:var(--text);
-  border-radius:12px;
-  min-height:46px;
-  font-weight:800;
-}
-
-.summary-card{
-  background:var(--panel);
-  border:1px solid var(--line);
-  border-radius:15px;
-  padding:13px;
-  margin-top:4px;
-}
-
-.summary-card span{
-  display:block;
-  color:var(--muted);
-  font-size:12px;
-}
-
-.summary-card strong{
-  display:block;
-  font-size:28px;
-  color:var(--orange);
-  margin-top:3px;
-}
-
-.text-input{
-  width:100%;
-  min-height:48px;
-  border:1px solid var(--line);
-  background:var(--bg);
-  color:var(--text);
-  border-radius:12px;
-  padding:11px 12px;
-}
-
-.warning{
-  margin-top:10px;
-  color:var(--red);
-  font-size:13px;
-}
-
-.off-panel{
-  text-align:center;
-  padding:26px 10px;
-}
-
-.off-icon{
-  width:52px;
-  height:52px;
-  margin:0 auto 12px;
-  border-radius:50%;
-  background:var(--panel2);
-  display:grid;
-  place-items:center;
-  color:var(--orange);
-  font-size:26px;
-  font-weight:900;
-}
-
-.manage-summary-card{
-  background:var(--panel);
-  border:1px solid var(--line);
-  border-radius:15px;
-  padding:14px;
-}
-
-.manage-summary-card span,
-.manage-summary-card small{
-  display:block;
-  color:var(--muted);
-}
-
-.manage-summary-card strong{
-  display:block;
-  margin-top:4px;
-  font-size:20px;
-}
-
-.manage-summary-card small{
-  margin-top:4px;
-}
 
-@media(max-width:390px){
+/* =========================
+   HOURS
+========================= */
 
-  .app-shell{
-    padding-left:14px;
-    padding-right:14px;
+function timeToMin(value) {
+  if (!value) {
+    return null;
   }
 
-  .date-button{
-    font-size:13px;
-    padding-left:7px;
-    padding-right:7px;
+  const parts =
+    value
+      .split(":")
+      .map(Number);
+
+  return (
+    parts[0] * 60 +
+    parts[1]
+  );
+}
+
+function paidMinutes(day) {
+  if (
+    !day ||
+    day.off ||
+    !day.start ||
+    !day.finish
+  ) {
+    return 0;
   }
 
-  .date-row{
-    grid-template-columns:40px minmax(0,1fr) 40px;
-    gap:6px;
+  const start =
+    timeToMin(
+      day.start
+    );
+
+  const finish =
+    timeToMin(
+      day.finish
+    );
+
+  if (
+    finish <= start
+  ) {
+    return 0;
   }
 
-  .fortnight-nav{
-    max-width:300px;
+  return Math.max(
+    0,
+    finish -
+    start -
+    Number(
+      day.break || 0
+    )
+  );
+}
+
+function fmtHM(minutes) {
+  const total =
+    Math.max(
+      0,
+      Math.round(minutes)
+    );
+
+  const hours =
+    Math.floor(
+      total / 60
+    );
+
+  const mins =
+    total % 60;
+
+  return `${hours}h ${pad(mins)}m`;
+}
+
+
+/* =========================
+   FORTNIGHT DATA
+========================= */
+
+function makeDays(
+  start,
+  offWeek
+) {
+  const offsets = [
+    0,
+    1,
+    2,
+    3,
+    4,
+    7,
+    8,
+    9,
+    10,
+    11
+  ];
+
+  return offsets.map(
+    (
+      offset,
+      index
+    ) => ({
+      date:
+        addDays(
+          start,
+          offset
+        ),
+
+      week:
+        index < 5
+          ? 1
+          : 2,
+
+      weekday:
+        index % 5,
+
+      off:
+        (
+          offWeek === 1 &&
+          index === 4
+        ) ||
+        (
+          offWeek === 2 &&
+          index === 9
+        ),
+
+      start: "",
+      finish: "",
+      break: 30,
+      note: ""
+    })
+  );
+}
+
+function blankState() {
+  const start =
+    mondayOf(
+      new Date()
+    );
+
+  return {
+    configured: false,
+    start,
+    offWeek: 2,
+    days:
+      makeDays(
+        start,
+        2
+      )
+  };
+}
+
+
+/* =========================
+   STORAGE
+========================= */
+
+function loadCurrent() {
+  const keys = [
+    CURRENT_KEY,
+    "fortnightTracker.v4",
+    "fortnightTracker.v2",
+    "fortnightTracker.v1"
+  ];
+
+  for (
+    const key
+    of keys
+  ) {
+    try {
+      const raw =
+        localStorage.getItem(
+          key
+        );
+
+      if (!raw) {
+        continue;
+      }
+
+      const value =
+        JSON.parse(raw);
+
+      if (
+        value &&
+        value.start &&
+        Array.isArray(
+          value.days
+        ) &&
+        value.days.length === 10
+      ) {
+        return value;
+      }
+    }
+    catch (error) {
+      // Try the next saved version.
+    }
   }
 
-  .header-subtitle{
-    font-size:15px;
-  }
+  return blankState();
+}
 
-  .calendar-grid{
-    gap:6px;
-  }
+function loadHistory() {
+  try {
+    const raw =
+      localStorage.getItem(
+        HISTORY_KEY
+      );
 
-  .cal-cell{
-    min-height:82px;
-    padding:7px;
-  }
+    const value =
+      raw
+        ? JSON.parse(raw)
+        : [];
 
-  .cal-cell .dow{
-    font-size:9px;
-  }
+    if (
+      !Array.isArray(value)
+    ) {
+      return [];
+    }
 
-  .cal-cell .date{
-    font-size:17px;
+    return value
+      .filter(
+        item =>
+          item &&
+          item.start &&
+          Array.isArray(
+            item.days
+          ) &&
+          item.days.length === 10
+      )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          a.start.localeCompare(
+            b.start
+          )
+      );
   }
-
-  .cal-cell .cal-hours{
-    left:7px;
-    bottom:7px;
-    font-size:10px;
-  }
-
-  .settings-grid strong{
-    font-size:14px;
+  catch (error) {
+    return [];
   }
 }
 
-@media(min-width:650px){
+let currentState =
+  loadCurrent();
 
-  .metric-grid{
-    grid-template-columns:repeat(4,1fr);
+let history =
+  loadHistory();
+
+let viewedStart =
+  currentState.start;
+
+let editingIndex =
+  null;
+
+function persistCurrent() {
+  localStorage.setItem(
+    CURRENT_KEY,
+    JSON.stringify(
+      currentState
+    )
+  );
+}
+
+function persistHistory() {
+  localStorage.setItem(
+    HISTORY_KEY,
+    JSON.stringify(
+      history
+    )
+  );
+}
+
+
+/* =========================
+   REPAIR OLD ROLLOVER
+========================= */
+
+function repairLegacyRollover() {
+  if (
+    !currentState.configured ||
+    history.length === 0
+  ) {
+    return;
   }
 
-  .preset-grid{
-    grid-template-columns:repeat(5,1fr);
+  const previous =
+    history[
+      history.length - 1
+    ];
+
+  if (
+    currentState.start !==
+    addDays(
+      previous.start,
+      14
+    )
+  ) {
+    return;
   }
+
+  if (
+    currentState.offWeek ===
+    previous.offWeek
+  ) {
+    return;
+  }
+
+  const friday1 =
+    currentState.days[4] || {};
+
+  const friday2 =
+    currentState.days[9] || {};
+
+  const fridayHasData =
+    [
+      friday1,
+      friday2
+    ].some(
+      day =>
+        day.start ||
+        day.finish ||
+        day.note
+    );
+
+  if (
+    fridayHasData
+  ) {
+    return;
+  }
+
+  currentState.offWeek =
+    previous.offWeek;
+
+  currentState.days.forEach(
+    (
+      day,
+      index
+    ) => {
+      day.off =
+        (
+          currentState.offWeek === 1 &&
+          index === 4
+        ) ||
+        (
+          currentState.offWeek === 2 &&
+          index === 9
+        );
+    }
+  );
+
+  persistCurrent();
+}
+
+repairLegacyRollover();
+
+
+/* =========================
+   VIEWING HISTORY
+========================= */
+
+function allFortnights() {
+  const items =
+    history
+      .filter(
+        item =>
+          item.start !==
+          currentState.start
+      )
+      .map(
+        item => ({
+          start:
+            item.start,
+          isCurrent:
+            false
+        })
+      );
+
+  if (
+    currentState.configured
+  ) {
+    items.push({
+      start:
+        currentState.start,
+      isCurrent:
+        true
+    });
+  }
+
+  return items.sort(
+    (
+      a,
+      b
+    ) =>
+      a.start.localeCompare(
+        b.start
+      )
+  );
+}
+
+function getViewedFortnight() {
+  if (
+    viewedStart ===
+    currentState.start
+  ) {
+    return currentState;
+  }
+
+  return (
+    history.find(
+      item =>
+        item.start ===
+        viewedStart
+    ) ||
+    currentState
+  );
+}
+
+function viewingCurrent() {
+  return (
+    viewedStart ===
+    currentState.start
+  );
+}
+
+function saveViewedFortnight(
+  fortnight
+) {
+  if (
+    fortnight.start ===
+    currentState.start
+  ) {
+    currentState =
+      fortnight;
+
+    persistCurrent();
+
+    return;
+  }
+
+  const index =
+    history.findIndex(
+      item =>
+        item.start ===
+        fortnight.start
+    );
+
+  if (
+    index >= 0
+  ) {
+    history[index] =
+      fortnight;
+
+    persistHistory();
+  }
+}
+
+
+/* =========================
+   SETUP
+========================= */
+
+function renderSetupDates() {
+  el(
+    "startDateButton"
+  ).textContent =
+    fmtDate(
+      currentState.start,
+      {
+        weekday:
+          "long",
+        day:
+          "numeric",
+        month:
+          "long",
+        year:
+          "numeric"
+      }
+    );
+
+  el(
+    "startDateNative"
+  ).value =
+    currentState.start;
+
+  el(
+    "week1FridayLabel"
+  ).textContent =
+    fmtDate(
+      addDays(
+        currentState.start,
+        4
+      )
+    );
+
+  el(
+    "week2FridayLabel"
+  ).textContent =
+    fmtDate(
+      addDays(
+        currentState.start,
+        11
+      )
+    );
+
+  el(
+    "setupOffSummary"
+  ).textContent =
+    `W${currentState.offWeek} Fri`;
+
+  document
+    .querySelectorAll(
+      ".choice-btn"
+    )
+    .forEach(
+      button => {
+        const week =
+          Number(
+            button.dataset.off
+              .replace(
+                "week",
+                ""
+              )
+          );
+
+        button
+          .classList
+          .toggle(
+            "selected",
+            week ===
+            currentState.offWeek
+          );
+      }
+    );
+}
+
+
+/* =========================
+   HEADER NAVIGATION
+========================= */
+
+function renderFortnightNav() {
+  if (
+    !currentState.configured
+  ) {
+    el(
+      "fortnightNav"
+    ).classList.add(
+      "hidden"
+    );
+
+    el(
+      "setupRange"
+    ).classList.remove(
+      "hidden"
+    );
+
+    return;
+  }
+
+  el(
+    "fortnightNav"
+  ).classList.remove(
+    "hidden"
+  );
+
+  el(
+    "setupRange"
+  ).classList.add(
+    "hidden"
+  );
+
+  const viewed =
+    getViewedFortnight();
+
+  el(
+    "fortnightRange"
+  ).textContent =
+    `${
+      fmtDate(
+        viewed.start,
+        {
+          day:
+            "numeric",
+          month:
+            "short"
+        }
+      )
+    } – ${
+      fmtDate(
+        addDays(
+          viewed.start,
+          13
+        ),
+        {
+          day:
+            "numeric",
+          month:
+            "short",
+          year:
+            "numeric"
+        }
+      )
+    }`;
+
+  el(
+    "pastBadge"
+  ).classList.toggle(
+    "hidden",
+    viewingCurrent()
+  );
+
+  el(
+    "returnCurrentBtn"
+  ).classList.toggle(
+    "hidden",
+    viewingCurrent()
+  );
+
+  const items =
+    allFortnights();
+
+  const index =
+    items.findIndex(
+      item =>
+        item.start ===
+        viewed.start
+    );
+
+  el(
+    "prevFortnightBtn"
+  ).disabled =
+    index <= 0;
+
+  el(
+    "nextFortnightViewBtn"
+  ).disabled =
+    (
+      index < 0 ||
+      index >=
+      items.length - 1
+    );
+}
+
+function moveFortnight(
+  direction
+) {
+  const items =
+    allFortnights();
+
+  const index =
+    items.findIndex(
+      item =>
+        item.start ===
+        viewedStart
+    );
+
+  const nextIndex =
+    index +
+    direction;
+
+  if (
+    nextIndex < 0 ||
+    nextIndex >=
+    items.length
+  ) {
+    return;
+  }
+
+  viewedStart =
+    items[
+      nextIndex
+    ].start;
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
+
+  renderTracker();
+}
+
+
+/* =========================
+   PROGRESS
+========================= */
+
+function getStats(
+  fortnight
+) {
+  const worked =
+    fortnight.days.reduce(
+      (
+        total,
+        day
+      ) =>
+        total +
+        paidMinutes(day),
+      0
+    );
+
+  const remaining =
+    Math.max(
+      0,
+      TARGET -
+      worked
+    );
+
+  const workingDays =
+    fortnight.days.filter(
+      day =>
+        !day.off
+    );
+
+  const loggedDays =
+    workingDays.filter(
+      day =>
+        paidMinutes(day) > 0
+    );
+
+  const unlogged =
+    workingDays.length -
+    loggedDays.length;
+
+  return {
+    worked,
+    remaining,
+    loggedDays,
+    unlogged,
+
+    average:
+      unlogged
+        ? remaining /
+          unlogged
+        : 0,
+
+    percent:
+      Math.min(
+        100,
+        Math.round(
+          worked /
+          TARGET *
+          100
+        )
+      )
+  };
+}
+
+function renderOverview() {
+  const stats =
+    getStats(
+      getViewedFortnight()
+    );
+
+  el(
+    "progressHeadline"
+  ).textContent =
+    `${fmtHM(
+      stats.worked
+    )} of 75h`;
+
+  el(
+    "progressPercent"
+  ).textContent =
+    `${stats.percent}%`;
+
+  el(
+    "progressBar"
+  ).style.width =
+    `${stats.percent}%`;
+
+  el(
+    "workedMetric"
+  ).textContent =
+    fmtHM(
+      stats.worked
+    );
+
+  el(
+    "remainingMetric"
+  ).textContent =
+    fmtHM(
+      stats.remaining
+    );
+
+  el(
+    "daysLeftMetric"
+  ).textContent =
+    stats.unlogged;
+
+  el(
+    "avgMetric"
+  ).textContent =
+    fmtHM(
+      stats.average
+    );
+
+  const pace =
+    el(
+      "paceMessage"
+    );
+
+  pace.className =
+    "pace-box";
+
+  if (
+    stats.worked >=
+    TARGET
+  ) {
+    pace
+      .classList
+      .add(
+        "good"
+      );
+
+    pace.innerHTML =
+      `<strong>Target reached.</strong> ` +
+      `You are ${
+        fmtHM(
+          stats.worked -
+          TARGET
+        )
+      } over 75 hours.`;
+  }
+
+  else if (
+    stats.loggedDays.length ===
+    0
+  ) {
+    pace
+      .classList
+      .add(
+        "neutral"
+      );
+
+    pace.innerHTML =
+      `<strong>${
+        fmtHM(
+          stats.remaining
+        )
+      } remaining.</strong> ` +
+      `Average ${
+        fmtHM(
+          stats.average
+        )
+      } across ${
+        stats.unlogged
+      } unlogged working days.`;
+  }
+
+  else {
+    const difference =
+      stats.worked -
+      (
+        TARGET / 9
+      ) *
+      stats.loggedDays.length;
+
+    if (
+      difference >= 15
+    ) {
+      pace
+        .classList
+        .add(
+          "good"
+        );
+
+      pace.innerHTML =
+        `<strong>You're ahead.</strong> ` +
+        `${
+          fmtHM(
+            stats.remaining
+          )
+        } remaining, averaging ${
+          fmtHM(
+            stats.average
+          )
+        } across ${
+          stats.unlogged
+        } working days.`;
+    }
+
+    else if (
+      difference <= -15
+    ) {
+      pace
+        .classList
+        .add(
+          "warn"
+        );
+
+      pace.innerHTML =
+        `<strong>You're slightly behind pace.</strong> ` +
+        `${
+          fmtHM(
+            stats.remaining
+          )
+        } remaining, averaging ${
+          fmtHM(
+            stats.average
+          )
+        } across ${
+          stats.unlogged
+        } working days.`;
+    }
+
+    else {
+      pace
+        .classList
+        .add(
+          "neutral"
+        );
+
+      pace.innerHTML =
+        `<strong>On track.</strong> ` +
+        `${
+          fmtHM(
+            stats.remaining
+          )
+        } remaining, averaging ${
+          fmtHM(
+            stats.average
+          )
+        } across ${
+          stats.unlogged
+        } working days.`;
+    }
+  }
+
+  const end =
+    parseISO(
+      addDays(
+        currentState.start,
+        13
+      )
+    );
+
+  const finished =
+    new Date() >
+    new Date(
+      end.getFullYear(),
+      end.getMonth(),
+      end.getDate(),
+      23,
+      59,
+      59
+    );
+
+  el(
+    "nextFortnightBtn"
+  ).classList.toggle(
+    "hidden",
+    !(
+      viewingCurrent() &&
+      finished
+    )
+  );
+}
+
+
+/* =========================
+   CALENDAR
+========================= */
+
+function renderCalendar() {
+  const viewed =
+    getViewedFortnight();
+
+  const today =
+    localISO(
+      new Date()
+    );
+
+  el(
+    "calendarGrid"
+  ).innerHTML =
+    viewed.days
+      .map(
+        (
+          day,
+          index
+        ) => {
+          const paid =
+            paidMinutes(day);
+
+          const date =
+            parseISO(
+              day.date
+            );
+
+          const weekday =
+            date
+              .toLocaleDateString(
+                "en-GB",
+                {
+                  weekday:
+                    "short"
+                }
+              );
+
+          return `
+            <button
+              class="
+                cal-cell
+                ${
+                  day.date ===
+                  today
+                    ? "today"
+                    : ""
+                }
+                ${
+                  day.off
+                    ? "off"
+                    : ""
+                }
+                ${
+                  paid > 0
+                    ? "logged"
+                    : ""
+                }
+              "
+              data-cal="${index}"
+              type="button"
+            >
+
+              <div class="dow">
+                ${weekday} · W${day.week}
+              </div>
+
+              <div class="date">
+                ${date.getDate()}
+              </div>
+
+              <div class="cal-hours">
+                ${
+                  day.off
+                    ? "OFF"
+                    : (
+                        paid > 0
+                          ? fmtHM(
+                              paid
+                            )
+                          : "—"
+                      )
+                }
+              </div>
+
+            </button>
+          `;
+        }
+      )
+      .join("");
+
+  document
+    .querySelectorAll(
+      "[data-cal]"
+    )
+    .forEach(
+      button => {
+        button.addEventListener(
+          "click",
+          () =>
+            openEditor(
+              Number(
+                button.dataset.cal
+              )
+            )
+        );
+      }
+    );
+}
+
+
+/* =========================
+   MANAGE
+========================= */
+
+function renderManageSummary() {
+  const viewed =
+    getViewedFortnight();
+
+  const end =
+    addDays(
+      viewed.start,
+      13
+    );
+
+  el(
+    "manageType"
+  ).textContent =
+    viewingCurrent()
+      ? "Current fortnight"
+      : "Past fortnight";
+
+  el(
+    "manageRange"
+  ).textContent =
+    `${
+      fmtDate(
+        viewed.start,
+        {
+          day:
+            "numeric",
+          month:
+            "short",
+          year:
+            "numeric"
+        }
+      )
+    } – ${
+      fmtDate(
+        end,
+        {
+          day:
+            "numeric",
+          month:
+            "short",
+          year:
+            "numeric"
+        }
+      )
+    }`;
+
+  const offDate =
+    viewed.offWeek === 1
+      ? addDays(
+          viewed.start,
+          4
+        )
+      : addDays(
+          viewed.start,
+          11
+        );
+
+  el(
+    "manageDayOff"
+  ).textContent =
+    `Non-working day: ${
+      fmtDate(
+        offDate,
+        {
+          weekday:
+            "long",
+          day:
+            "numeric",
+          month:
+            "long"
+        }
+      )
+    }`;
+
+  el(
+    "startNextBtn"
+  ).classList.toggle(
+    "hidden",
+    !viewingCurrent()
+  );
+
+  el(
+    "changeSetupBtn"
+  ).classList.toggle(
+    "hidden",
+    !viewingCurrent()
+  );
+
+  el(
+    "returnCurrentManageBtn"
+  ).classList.toggle(
+    "hidden",
+    viewingCurrent()
+  );
+}
+
+function openManage() {
+  renderManageSummary();
+
+  el(
+    "manageSheet"
+  ).classList.remove(
+    "hidden"
+  );
+
+  document.body.style.overflow =
+    "hidden";
+
+  requestAnimationFrame(
+    () => {
+      el(
+        "managePanel"
+      ).scrollTop = 0;
+    }
+  );
+}
+
+function closeManage() {
+  el(
+    "manageSheet"
+  ).classList.add(
+    "hidden"
+  );
+
+  document.body.style.overflow =
+    "";
+}
+
+
+/* =========================
+   TRACKER
+========================= */
+
+function renderTracker() {
+  renderFortnightNav();
+  renderOverview();
+  renderCalendar();
+  renderManageSummary();
+}
+
+function renderShell() {
+  el(
+    "setupView"
+  ).classList.toggle(
+    "hidden",
+    currentState.configured
+  );
+
+  el(
+    "trackerView"
+  ).classList.toggle(
+    "hidden",
+    !currentState.configured
+  );
+
+  renderSetupDates();
+  renderFortnightNav();
+
+  if (
+    currentState.configured
+  ) {
+    renderTracker();
+  }
+}
+
+
+/* =========================
+   HISTORY / ROLLOVER
+========================= */
+
+function archiveCurrentFortnight() {
+  const snapshot =
+    clone(
+      currentState
+    );
+
+  snapshot.archivedAt =
+    new Date()
+      .toISOString();
+
+  const index =
+    history.findIndex(
+      item =>
+        item.start ===
+        snapshot.start
+    );
+
+  if (
+    index >= 0
+  ) {
+    history[index] =
+      snapshot;
+  }
+
+  else {
+    history.push(
+      snapshot
+    );
+  }
+
+  history.sort(
+    (
+      a,
+      b
+    ) =>
+      a.start.localeCompare(
+        b.start
+      )
+  );
+
+  persistHistory();
+}
+
+function startNextFortnight() {
+  archiveCurrentFortnight();
+
+  const newStart =
+    addDays(
+      currentState.start,
+      14
+    );
+
+  const offWeek =
+    currentState.offWeek;
+
+  currentState = {
+    configured:
+      true,
+
+    start:
+      newStart,
+
+    offWeek,
+
+    days:
+      makeDays(
+        newStart,
+        offWeek
+      )
+  };
+
+  viewedStart =
+    newStart;
+
+  persistCurrent();
+
+  closeManage();
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
+
+  renderShell();
+}
+
+function returnToCurrent() {
+  viewedStart =
+    currentState.start;
+
+  closeManage();
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
+
+  renderTracker();
+}
+
+
+/* =========================
+   EDITOR
+========================= */
+
+function renderOptionButtons(
+  containerId,
+  options,
+  value,
+  kind
+) {
+  el(
+    containerId
+  ).innerHTML =
+    options
+      .map(
+        option => {
+          const selected =
+            String(option) ===
+            String(value)
+              ? "selected"
+              : "";
+
+          const className =
+            kind === "break"
+              ? "break-btn"
+              : "time-btn";
+
+          const label =
+            kind === "break"
+              ? `${option}m`
+              : option;
+
+          return `
+            <button
+              class="${className} ${selected}"
+              data-value="${option}"
+              type="button"
+            >
+              ${label}
+            </button>
+          `;
+        }
+      )
+      .join("");
+}
+
+function clearPresetSelection() {
+  document
+    .querySelectorAll(
+      ".preset"
+    )
+    .forEach(
+      button =>
+        button
+          .classList
+          .remove(
+            "selected"
+          )
+    );
+}
+
+function editorValue() {
+  const start =
+    document.querySelector(
+      "#startButtons .selected"
+    );
+
+  const finish =
+    document.querySelector(
+      "#finishButtons .selected"
+    );
+
+  const breakButton =
+    document.querySelector(
+      "#breakButtons .selected"
+    );
+
+  return {
+    start:
+      start
+        ? start.dataset.value
+        : "",
+
+    finish:
+      finish
+        ? finish.dataset.value
+        : "",
+
+    break:
+      Number(
+        breakButton
+          ? breakButton.dataset.value
+          : 30
+      ),
+
+    note:
+      el(
+        "dayNote"
+      )
+        .value
+        .trim()
+  };
+}
+
+function refreshEditorTotal() {
+  const temp =
+    Object.assign(
+      {
+        off: false
+      },
+      editorValue()
+    );
+
+  const paid =
+    paidMinutes(
+      temp
+    );
+
+  el(
+    "editorPaid"
+  ).textContent =
+    fmtHM(paid);
+
+  const warning =
+    el(
+      "dayWarning"
+    );
+
+  let text =
+    "";
+
+  if (
+    temp.start &&
+    temp.finish &&
+    timeToMin(
+      temp.finish
+    ) <=
+    timeToMin(
+      temp.start
+    )
+  ) {
+    text =
+      "Finish time must be later than start time.";
+  }
+
+  else if (
+    paid > 540
+  ) {
+    text =
+      "This is more than 9 paid hours.";
+  }
+
+  else if (
+    paid > 0 &&
+    paid < 360
+  ) {
+    text =
+      "This is under 6 paid hours.";
+  }
+
+  warning.textContent =
+    text;
+
+  warning.classList.toggle(
+    "hidden",
+    !text
+  );
+}
+
+function bindChoiceButtons(
+  containerId
+) {
+  el(
+    containerId
+  )
+    .querySelectorAll(
+      "button"
+    )
+    .forEach(
+      button => {
+        button.addEventListener(
+          "click",
+          () => {
+            el(
+              containerId
+            )
+              .querySelectorAll(
+                "button"
+              )
+              .forEach(
+                item =>
+                  item
+                    .classList
+                    .remove(
+                      "selected"
+                    )
+              );
+
+            button
+              .classList
+              .add(
+                "selected"
+              );
+
+            clearPresetSelection();
+            refreshEditorTotal();
+          }
+        );
+      }
+    );
+}
+
+function resetEditorScroll() {
+  requestAnimationFrame(
+    () => {
+      el(
+        "editorPanel"
+      ).scrollTop = 0;
+
+      requestAnimationFrame(
+        () => {
+          el(
+            "editorPanel"
+          ).scrollTop = 0;
+        }
+      );
+    }
+  );
+}
+
+function openEditor(index) {
+  editingIndex =
+    index;
+
+  const day =
+    getViewedFortnight()
+      .days[
+        index
+      ];
+
+  el(
+    "editorWeek"
+  ).textContent =
+    `Week ${day.week}`;
+
+  el(
+    "editorDate"
+  ).textContent =
+    fmtDate(
+      day.date,
+      {
+        weekday:
+          "long",
+        day:
+          "numeric",
+        month:
+          "long"
+      }
+    );
+
+  el(
+    "editorSheet"
+  ).classList.remove(
+    "hidden"
+  );
+
+  document.body.style.overflow =
+    "hidden";
+
+  el(
+    "offDayPanel"
+  ).classList.toggle(
+    "hidden",
+    !day.off
+  );
+
+  el(
+    "workDayPanel"
+  ).classList.toggle(
+    "hidden",
+    day.off
+  );
+
+  resetEditorScroll();
+
+  if (
+    day.off
+  ) {
+    return;
+  }
+
+  renderOptionButtons(
+    "startButtons",
+    startOptions,
+    day.start ||
+    "07:30",
+    "time"
+  );
+
+  renderOptionButtons(
+    "finishButtons",
+    finishOptions,
+    day.finish ||
+    "16:30",
+    "time"
+  );
+
+  renderOptionButtons(
+    "breakButtons",
+    breakOptions,
+    day.break ||
+    30,
+    "break"
+  );
+
+  bindChoiceButtons(
+    "startButtons"
+  );
+
+  bindChoiceButtons(
+    "finishButtons"
+  );
+
+  bindChoiceButtons(
+    "breakButtons"
+  );
+
+  el(
+    "dayNote"
+  ).value =
+    day.note ||
+    "";
+
+  clearPresetSelection();
+
+  Object
+    .keys(
+      presets
+    )
+    .some(
+      key => {
+        const preset =
+          presets[key];
+
+        if (
+          day.start ===
+          preset.start &&
+          day.finish ===
+          preset.finish &&
+          Number(
+            day.break
+          ) ===
+          preset.break
+        ) {
+          const button =
+            document.querySelector(
+              `.preset[data-preset="${key}"]`
+            );
+
+          if (
+            button
+          ) {
+            button
+              .classList
+              .add(
+                "selected"
+              );
+          }
+
+          return true;
+        }
+
+        return false;
+      }
+    );
+
+  refreshEditorTotal();
+}
+
+function closeEditor() {
+  el(
+    "editorSheet"
+  ).classList.add(
+    "hidden"
+  );
+
+  document.body.style.overflow =
+    "";
+
+  editingIndex =
+    null;
+}
+
+
+/* =========================
+   EVENTS
+========================= */
+
+function confirmStartNext() {
+  const confirmed =
+    confirm(
+      "Start the next fortnight? Your current fortnight will remain available in your history."
+    );
+
+  if (
+    confirmed
+  ) {
+    startNextFortnight();
+  }
+}
+
+function bindEvents() {
+
+  document
+    .querySelectorAll(
+      ".choice-btn"
+    )
+    .forEach(
+      button => {
+        button.addEventListener(
+          "click",
+          () => {
+            currentState.offWeek =
+              Number(
+                button.dataset.off
+                  .replace(
+                    "week",
+                    ""
+                  )
+              );
+
+            renderSetupDates();
+          }
+        );
+      }
+    );
+
+
+  el(
+    "prevMonday"
+  ).addEventListener(
+    "click",
+    () => {
+      currentState.start =
+        addDays(
+          currentState.start,
+          -7
+        );
+
+      renderSetupDates();
+    }
+  );
+
+
+  el(
+    "nextMonday"
+  ).addEventListener(
+    "click",
+    () => {
+      currentState.start =
+        addDays(
+          currentState.start,
+          7
+        );
+
+      renderSetupDates();
+    }
+  );
+
+
+  el(
+    "startDateButton"
+  ).addEventListener(
+    "click",
+    () => {
+      const picker =
+        el(
+          "startDateNative"
+        );
+
+      if (
+        typeof picker.showPicker ===
+        "function"
+      ) {
+        picker.showPicker();
+      }
+
+      else {
+        picker.click();
+      }
+    }
+  );
+
+
+  el(
+    "startDateNative"
+  ).addEventListener(
+    "change",
+    event => {
+      if (
+        !event.target.value
+      ) {
+        return;
+      }
+
+      currentState.start =
+        mondayOf(
+          event.target.value
+        );
+
+      renderSetupDates();
+    }
+  );
+
+
+  el(
+    "createFortnightBtn"
+  ).addEventListener(
+    "click",
+    () => {
+      currentState.days =
+        makeDays(
+          currentState.start,
+          currentState.offWeek
+        );
+
+      currentState.configured =
+        true;
+
+      viewedStart =
+        currentState.start;
+
+      persistCurrent();
+      renderShell();
+    }
+  );
+
+
+  el(
+    "prevFortnightBtn"
+  ).addEventListener(
+    "click",
+    () =>
+      moveFortnight(
+        -1
+      )
+  );
+
+
+  el(
+    "nextFortnightViewBtn"
+  ).addEventListener(
+    "click",
+    () =>
+      moveFortnight(
+        1
+      )
+  );
+
+
+  el(
+    "returnCurrentBtn"
+  ).addEventListener(
+    "click",
+    returnToCurrent
+  );
+
+
+  el(
+    "settingsBtn"
+  ).addEventListener(
+    "click",
+    () => {
+      if (
+        currentState.configured
+      ) {
+        openManage();
+      }
+    }
+  );
+
+
+  el(
+    "manageFortnightBtn"
+  ).addEventListener(
+    "click",
+    openManage
+  );
+
+
+  el(
+    "closeManage"
+  ).addEventListener(
+    "click",
+    closeManage
+  );
+
+
+  el(
+    "manageSheet"
+  ).addEventListener(
+    "click",
+    event => {
+      if (
+        event.target ===
+        el(
+          "manageSheet"
+        )
+      ) {
+        closeManage();
+      }
+    }
+  );
+
+
+  el(
+    "returnCurrentManageBtn"
+  ).addEventListener(
+    "click",
+    returnToCurrent
+  );
+
+
+  el(
+    "startNextBtn"
+  ).addEventListener(
+    "click",
+    confirmStartNext
+  );
+
+
+  el(
+    "nextFortnightBtn"
+  ).addEventListener(
+    "click",
+    confirmStartNext
+  );
+
+
+  el(
+    "changeSetupBtn"
+  ).addEventListener(
+    "click",
+    () => {
+      if (
+        !viewingCurrent()
+      ) {
+        return;
+      }
+
+      const confirmed =
+        confirm(
+          "Change the current fortnight setup? Creating it again will reset the currently logged days in this fortnight."
+        );
+
+      if (
+        !confirmed
+      ) {
+        return;
+      }
+
+      closeManage();
+
+      currentState.configured =
+        false;
+
+      persistCurrent();
+      renderShell();
+    }
+  );
+
+
+  el(
+    "closeEditor"
+  ).addEventListener(
+    "click",
+    closeEditor
+  );
+
+
+  el(
+    "closeOffDayBtn"
+  ).addEventListener(
+    "click",
+    closeEditor
+  );
+
+
+  el(
+    "editorSheet"
+  ).addEventListener(
+    "click",
+    event => {
+      if (
+        event.target ===
+        el(
+          "editorSheet"
+        )
+      ) {
+        closeEditor();
+      }
+    }
+  );
+
+
+  document
+    .querySelectorAll(
+      ".preset"
+    )
+    .forEach(
+      button => {
+        button.addEventListener(
+          "click",
+          () => {
+            const preset =
+              presets[
+                button.dataset.preset
+              ];
+
+            clearPresetSelection();
+
+            button
+              .classList
+              .add(
+                "selected"
+              );
+
+            renderOptionButtons(
+              "startButtons",
+              startOptions,
+              preset.start,
+              "time"
+            );
+
+            renderOptionButtons(
+              "finishButtons",
+              finishOptions,
+              preset.finish,
+              "time"
+            );
+
+            renderOptionButtons(
+              "breakButtons",
+              breakOptions,
+              preset.break,
+              "break"
+            );
+
+            bindChoiceButtons(
+              "startButtons"
+            );
+
+            bindChoiceButtons(
+              "finishButtons"
+            );
+
+            bindChoiceButtons(
+              "breakButtons"
+            );
+
+            el(
+              "dayNote"
+            ).value =
+              preset.note;
+
+            refreshEditorTotal();
+          }
+        );
+      }
+    );
+
+
+  el(
+    "dayNote"
+  ).addEventListener(
+    "input",
+    refreshEditorTotal
+  );
+
+
+  el(
+    "saveDayBtn"
+  ).addEventListener(
+    "click",
+    () => {
+      if (
+        editingIndex ===
+        null
+      ) {
+        return;
+      }
+
+      const value =
+        editorValue();
+
+      if (
+        !value.start ||
+        !value.finish ||
+        timeToMin(
+          value.finish
+        ) <=
+        timeToMin(
+          value.start
+        )
+      ) {
+        el(
+          "dayWarning"
+        ).textContent =
+          "Choose a valid start and finish time.";
+
+        el(
+          "dayWarning"
+        ).classList.remove(
+          "hidden"
+        );
+
+        return;
+      }
+
+      const viewed =
+        clone(
+          getViewedFortnight()
+        );
+
+      Object.assign(
+        viewed.days[
+          editingIndex
+        ],
+        value
+      );
+
+      saveViewedFortnight(
+        viewed
+      );
+
+      closeEditor();
+      renderTracker();
+    }
+  );
+
+
+  el(
+    "clearDayBtn"
+  ).addEventListener(
+    "click",
+    () => {
+      if (
+        editingIndex ===
+        null
+      ) {
+        return;
+      }
+
+      const viewed =
+        clone(
+          getViewedFortnight()
+        );
+
+      Object.assign(
+        viewed.days[
+          editingIndex
+        ],
+        {
+          start: "",
+          finish: "",
+          break: 30,
+          note: ""
+        }
+      );
+
+      saveViewedFortnight(
+        viewed
+      );
+
+      closeEditor();
+      renderTracker();
+    }
+  );
+}
+
+
+/* =========================
+   START
+========================= */
+
+bindEvents();
+renderShell();
+
+if (
+  "serviceWorker" in navigator
+) {
+  window.addEventListener(
+    "load",
+    () => {
+      navigator
+        .serviceWorker
+        .register(
+          "./sw.js"
+        )
+        .catch(
+          () => {}
+        );
+    }
+  );
 }
