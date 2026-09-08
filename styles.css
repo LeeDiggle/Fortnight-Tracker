@@ -53,8 +53,10 @@ h1{
 
 h2{
   font-size:19px;
+  line-height:1.15;
   letter-spacing:-.025em;
   margin-bottom:4px;
+  font-weight:800;
 }
 
 h3{
@@ -83,12 +85,19 @@ h3{
   font-size:16px;
 }
 
-.eyebrow,
-.section-label{
+.eyebrow{
   font-size:10px;
   font-weight:800;
-  letter-spacing:.1em;
+  letter-spacing:.11em;
   color:var(--muted);
+  text-transform:uppercase;
+}
+
+.section-label{
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.12em;
+  color:#8e96a3;
   text-transform:uppercase;
 }
 
@@ -344,18 +353,23 @@ h3{
 }
 
 .progress-headline{
-  margin-top:3px;
+  margin-top:4px;
   margin-bottom:0;
+  font-size:21px;
+  font-weight:850;
+  letter-spacing:-.03em;
 }
 
 .percent{
-  font-size:21px;
+  font-size:20px;
+  line-height:1;
   font-weight:900;
   color:var(--orange);
+  padding-top:3px;
 }
 
 .progress-track{
-  height:9px;
+  height:8px;
   background:var(--panel2);
   border-radius:99px;
   overflow:hidden;
@@ -382,47 +396,54 @@ h3{
 }
 
 .metric{
-  background:var(--panel3);
+  background:rgba(10,12,15,.64);
   border-radius:12px;
-  padding:10px;
+  padding:9px 10px;
 }
 
 .metric span{
   display:block;
-  color:var(--muted);
+  color:#8f97a3;
   font-size:10px;
 }
 
 .metric strong{
   display:block;
-  font-size:18px;
-  margin-top:2px;
+  font-size:17px;
+  line-height:1.2;
+  margin-top:3px;
   white-space:nowrap;
+  font-weight:750;
 }
 
 .pace-box{
   margin-top:9px;
   border:1px solid var(--line);
-  background:var(--panel3);
+  background:rgba(10,12,15,.5);
   border-radius:12px;
   padding:9px 10px;
   font-size:12px;
   line-height:1.4;
+  color:#d8dce2;
+}
+
+.pace-box strong{
+  color:var(--text);
 }
 
 .pace-box.neutral{
   border-color:var(--line);
-  background:var(--panel3);
+  background:rgba(10,12,15,.5);
 }
 
 .pace-box.good{
-  border-color:rgba(85,217,139,.45);
-  background:rgba(85,217,139,.08);
+  border-color:rgba(85,217,139,.42);
+  background:rgba(85,217,139,.07);
 }
 
 .pace-box.warn{
-  border-color:rgba(255,134,20,.45);
-  background:rgba(255,134,20,.08);
+  border-color:rgba(255,134,20,.42);
+  background:rgba(255,134,20,.07);
 }
 
 
@@ -435,8 +456,10 @@ h3{
 }
 
 .calendar-card h2{
-  margin-top:3px;
+  margin-top:4px;
   margin-bottom:0;
+  font-size:18px;
+  font-weight:800;
 }
 
 .calendar-grid{
@@ -455,10 +478,12 @@ h3{
   position:relative;
   color:var(--text);
   text-align:left;
+  overflow:hidden;
 }
 
 .cal-cell.today{
   outline:2px solid var(--orange);
+  outline-offset:1px;
 }
 
 .cal-cell.off{
@@ -470,25 +495,49 @@ h3{
 }
 
 .cal-cell .dow{
-  font-size:9px;
-  color:var(--muted);
+  font-size:8px;
+  font-weight:650;
+  letter-spacing:.025em;
+  color:#89919d;
   text-transform:uppercase;
   white-space:nowrap;
 }
 
 .cal-cell .date{
-  font-size:17px;
-  font-weight:900;
-  margin-top:2px;
+  font-size:18px;
+  line-height:1;
+  font-weight:850;
+  margin-top:5px;
+  letter-spacing:-.025em;
 }
 
 .cal-cell .cal-hours{
   position:absolute;
   bottom:7px;
   left:8px;
+  right:6px;
   font-size:10px;
+  line-height:1.1;
   color:var(--orange);
   white-space:nowrap;
+  overflow:hidden;
+}
+
+.cal-off-main{
+  display:block;
+  color:var(--orange);
+  font-size:10px;
+  line-height:1.05;
+  font-weight:700;
+}
+
+.cal-off-saved{
+  display:block;
+  margin-top:2px;
+  color:#b16e32;
+  font-size:8px;
+  line-height:1.05;
+  font-weight:650;
 }
 
 .legend{
@@ -496,7 +545,7 @@ h3{
   gap:12px;
   flex-wrap:wrap;
   margin-top:11px;
-  color:var(--muted);
+  color:#8f97a3;
   font-size:11px;
 }
 
@@ -545,8 +594,10 @@ h3{
 }
 
 .action-card-header h2{
-  margin-top:3px;
+  margin-top:4px;
   margin-bottom:0;
+  font-size:18px;
+  font-weight:800;
 }
 
 .action-nwd-date{
@@ -554,6 +605,7 @@ h3{
   font-size:14px;
   line-height:1.2;
   color:var(--orange);
+  font-weight:800;
 }
 
 .action-buttons{
@@ -923,7 +975,7 @@ h3{
   }
 
   .metric{
-    padding:9px 7px;
+    padding:8px 7px;
   }
 
   .metric strong{
@@ -951,7 +1003,21 @@ h3{
     font-size:16px;
   }
 
-  .cal-cell .cal-hours,
+  .cal-cell .cal-hours{
+    left:6px;
+    right:5px;
+    bottom:6px;
+    font-size:9px;
+  }
+
+  .cal-off-main{
+    font-size:9px;
+  }
+
+  .cal-off-saved{
+    font-size:7px;
+  }
+
   .nwd-day .nwd-status{
     left:6px;
     bottom:6px;
