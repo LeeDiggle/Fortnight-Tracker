@@ -346,11 +346,6 @@ function normaliseFortnight(value) {
   const result =
     clone(value);
 
-  /*
-    Older versions only had
-    offWeek. Treat that as the
-    normal repeating pattern.
-  */
   if (
     result.normalOffWeek !== 1 &&
     result.normalOffWeek !== 2
@@ -361,11 +356,6 @@ function normaliseFortnight(value) {
         : 2;
   }
 
-  /*
-    Keep offWeek too for
-    compatibility with existing
-    data and setup UI.
-  */
   result.offWeek =
     result.normalOffWeek;
 
@@ -552,7 +542,7 @@ function getLatestScheduledStart() {
   ].start;
 }
 
-function getDateCurrentStart() {
+function getActualCurrentStart() {
   const today =
     localISO(
       new Date()
@@ -573,9 +563,26 @@ function getDateCurrentStart() {
           )
     );
 
-  if (current) {
-    return current.start;
+  return current
+    ? current.start
+    : null;
+}
+
+function getDefaultViewStart() {
+  const actual =
+    getActualCurrentStart();
+
+  if (actual) {
+    return actual;
   }
+
+  const today =
+    localISO(
+      new Date()
+    );
+
+  const items =
+    allFortnights();
 
   const upcoming =
     items.find(
@@ -600,7 +607,7 @@ function getDateCurrentStart() {
 }
 
 let viewedStart =
-  getDateCurrentStart();
+  getDefaultViewStart();
 
 function getViewedFortnight() {
   return (
@@ -642,10 +649,14 @@ function getFortnightRelation(
   return "current";
 }
 
-function viewingDateCurrent() {
+function viewingActualCurrent() {
+  const actual =
+    getActualCurrentStart();
+
   return (
+    actual &&
     viewedStart ===
-    getDateCurrentStart()
+    actual
   );
 }
 
@@ -867,11 +878,15 @@ function renderFortnightNav() {
         : "Upcoming fortnight";
   }
 
+  const actualCurrent =
+    getActualCurrentStart();
+
   el(
     "returnCurrentBtn"
   ).classList.toggle(
     "hidden",
-    viewingDateCurrent()
+    !actualCurrent ||
+    viewingActualCurrent()
   );
 
   const items =
@@ -1025,13 +1040,6 @@ function renderOverview() {
     "progressBar"
   ).style.width =
     `${stats.percent}%`;
-
-  el(
-    "workedMetric"
-  ).textContent =
-    fmtHM(
-      stats.worked
-    );
 
   el(
     "remainingMetric"
@@ -1316,10 +1324,10 @@ function renderCalendar() {
 
 
 /* =========================
-   MANAGE
+   ACTION CARD
 ========================= */
 
-function renderManageSummary() {
+function renderActionCard() {
   const viewed =
     getViewedFortnight();
 
@@ -1328,10 +1336,10 @@ function renderManageSummary() {
       viewed
     );
 
-  const end =
-    addDays(
-      viewed.start,
-      13
+  const offDay =
+    viewed.days.find(
+      day =>
+        day.off
     );
 
   if (
@@ -1339,7 +1347,7 @@ function renderManageSummary() {
     "current"
   ) {
     el(
-      "manageType"
+      "actionFortnightType"
     ).textContent =
       "Current fortnight";
   }
@@ -1349,71 +1357,34 @@ function renderManageSummary() {
     "past"
   ) {
     el(
-      "manageType"
+      "actionFortnightType"
     ).textContent =
       "Past fortnight";
   }
 
   else {
     el(
-      "manageType"
+      "actionFortnightType"
     ).textContent =
       "Upcoming fortnight";
   }
 
   el(
-    "manageRange"
-  ).textContent =
-    `${
-      fmtDate(
-        viewed.start,
-        {
-          day:
-            "numeric",
-          month:
-            "short",
-          year:
-            "numeric"
-        }
-      )
-    } – ${
-      fmtDate(
-        end,
-        {
-          day:
-            "numeric",
-          month:
-            "short",
-          year:
-            "numeric"
-        }
-      )
-    }`;
-
-  const offDay =
-    viewed.days.find(
-      day =>
-        day.off
-    );
-
-  el(
-    "manageDayOff"
+    "actionNwdDate"
   ).textContent =
     offDay
-      ? `Non-working day: ${
-          fmtDate(
-            offDay.date,
-            {
-              weekday:
-                "long",
-              day:
-                "numeric",
-              month:
-                "long"
-            }
-          )
-        }`
-      : "No non-working day set";
+      ? fmtDate(
+          offDay.date,
+          {
+            weekday:
+              "short",
+            day:
+              "numeric",
+            month:
+              "short"
+          }
+        )
+      : "Not set";
 
   el(
     "startNextBtn"
@@ -1422,44 +1393,16 @@ function renderManageSummary() {
     !viewingLatestScheduled()
   );
 
+  const actualCurrent =
+    getActualCurrentStart();
+
   el(
-    "returnCurrentManageBtn"
+    "returnCurrentActionBtn"
   ).classList.toggle(
     "hidden",
-    viewingDateCurrent()
+    !actualCurrent ||
+    viewingActualCurrent()
   );
-}
-
-function openManage() {
-  renderManageSummary();
-
-  el(
-    "manageSheet"
-  ).classList.remove(
-    "hidden"
-  );
-
-  document.body.style.overflow =
-    "hidden";
-
-  requestAnimationFrame(
-    () => {
-      el(
-        "managePanel"
-      ).scrollTop = 0;
-    }
-  );
-}
-
-function closeManage() {
-  el(
-    "manageSheet"
-  ).classList.add(
-    "hidden"
-  );
-
-  document.body.style.overflow =
-    "";
 }
 
 
@@ -1616,8 +1559,6 @@ function openNwdPicker() {
       viewed
     );
 
-  closeManage();
-
   renderNwdPicker();
 
   el(
@@ -1693,7 +1634,7 @@ function renderTracker() {
   renderFortnightNav();
   renderOverview();
   renderCalendar();
-  renderManageSummary();
+  renderActionCard();
 }
 
 function renderShell() {
@@ -1778,11 +1719,6 @@ function startNextFortnight() {
       14
     );
 
-  /*
-    Inherit the normal repeating
-    pattern, not the actual moved
-    NWD in the current fortnight.
-  */
   const normalOffWeek =
     currentState.normalOffWeek === 1
       ? 1
@@ -1813,8 +1749,6 @@ function startNextFortnight() {
 
   persistCurrent();
 
-  closeManage();
-
   window.scrollTo({
     top: 0,
     behavior: "smooth"
@@ -1824,10 +1758,16 @@ function startNextFortnight() {
 }
 
 function returnToCurrent() {
-  viewedStart =
-    getDateCurrentStart();
+  const actual =
+    getActualCurrentStart();
 
-  closeManage();
+  if (!actual) {
+    return;
+  }
+
+  viewedStart =
+    actual;
+
   closeNwdPicker();
 
   window.scrollTo({
@@ -2417,65 +2357,10 @@ function bindEvents() {
 
 
   el(
-    "settingsBtn"
-  ).addEventListener(
-    "click",
-    () => {
-      if (
-        currentState.configured
-      ) {
-        openManage();
-      }
-    }
-  );
-
-
-  el(
-    "manageFortnightBtn"
-  ).addEventListener(
-    "click",
-    openManage
-  );
-
-
-  el(
-    "closeManage"
-  ).addEventListener(
-    "click",
-    closeManage
-  );
-
-
-  el(
-    "manageSheet"
-  ).addEventListener(
-    "click",
-    event => {
-      if (
-        event.target ===
-        el(
-          "manageSheet"
-        )
-      ) {
-        closeManage();
-      }
-    }
-  );
-
-
-  el(
     "changeNwdBtn"
   ).addEventListener(
     "click",
     openNwdPicker
-  );
-
-
-  el(
-    "returnCurrentManageBtn"
-  ).addEventListener(
-    "click",
-    returnToCurrent
   );
 
 
@@ -2488,10 +2373,10 @@ function bindEvents() {
 
 
   el(
-    "nextFortnightBtn"
+    "returnCurrentActionBtn"
   ).addEventListener(
     "click",
-    confirmStartNext
+    returnToCurrent
   );
 
 
