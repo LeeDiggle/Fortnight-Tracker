@@ -37,12 +37,12 @@
 
   <link
     rel="apple-touch-icon"
-    href="./icon-192.png"
+    href="./icon-512.png"
   >
 
   <link
     rel="stylesheet"
-    href="./styles.css?v=3"
+    href="./styles.css?v=4"
   >
 </head>
 
@@ -50,13 +50,12 @@
 
   <main class="app-shell">
 
-    <!-- =========================
-         HEADER
-    ========================== -->
+    <!-- HEADER -->
 
     <header class="topbar">
 
-      <div>
+      <div class="header-main">
+
         <div class="eyebrow">
           Working hours
         </div>
@@ -66,11 +65,55 @@
         </h1>
 
         <div
-          id="fortnightRange"
+          id="fortnightNav"
+          class="fortnight-nav hidden"
+        >
+
+          <button
+            id="prevFortnightBtn"
+            class="nav-arrow"
+            type="button"
+            aria-label="Previous fortnight"
+          >
+            ‹
+          </button>
+
+          <div class="fortnight-range-wrap">
+
+            <div
+              id="fortnightRange"
+              class="header-subtitle"
+            >
+              Set up your fortnight
+            </div>
+
+            <div
+              id="pastBadge"
+              class="past-badge hidden"
+            >
+              Past fortnight
+            </div>
+
+          </div>
+
+          <button
+            id="nextFortnightViewBtn"
+            class="nav-arrow"
+            type="button"
+            aria-label="Next fortnight"
+          >
+            ›
+          </button>
+
+        </div>
+
+        <div
+          id="setupRange"
           class="header-subtitle"
         >
           Set up your fortnight
         </div>
+
       </div>
 
       <button
@@ -85,9 +128,7 @@
     </header>
 
 
-    <!-- =========================
-         SETUP
-    ========================== -->
+    <!-- SETUP -->
 
     <section
       id="setupView"
@@ -252,14 +293,21 @@
     </section>
 
 
-    <!-- =========================
-         MAIN TRACKER
-    ========================== -->
+    <!-- TRACKER -->
 
     <section
       id="trackerView"
       class="hidden"
     >
+
+      <button
+        id="returnCurrentBtn"
+        class="return-current hidden"
+        type="button"
+      >
+        Return to current fortnight →
+      </button>
+
 
       <!-- PROGRESS -->
 
@@ -370,19 +418,13 @@
 
       <section class="card calendar-card">
 
-        <div class="calendar-heading">
-
-          <div>
-            <div class="section-label">
-              Fortnight calendar
-            </div>
-
-            <h2>
-              Tap a day to log or edit
-            </h2>
-          </div>
-
+        <div class="section-label">
+          Fortnight calendar
         </div>
+
+        <h2>
+          Tap a day to log or edit
+        </h2>
 
 
         <div
@@ -414,7 +456,7 @@
       </section>
 
 
-      <!-- FORTNIGHT SETTINGS -->
+      <!-- SETTINGS -->
 
       <section class="card fortnight-settings">
 
@@ -453,7 +495,7 @@
 
           <div>
             <span>
-              Default day
+              Target average
             </span>
 
             <strong>
@@ -500,9 +542,7 @@
   </main>
 
 
-  <!-- =========================
-       DAY EDITOR SHEET
-  ========================== -->
+  <!-- DAY EDITOR -->
 
   <div
     id="editorSheet"
@@ -547,8 +587,6 @@
       </header>
 
 
-      <!-- OFF DAY -->
-
       <div
         id="offDayPanel"
         class="off-panel hidden"
@@ -578,8 +616,6 @@
       </div>
 
 
-      <!-- WORKING DAY -->
-
       <div
         id="workDayPanel"
       >
@@ -596,17 +632,9 @@
             data-preset="monday"
             type="button"
           >
-            <strong>
-              Mon gym
-            </strong>
-
-            <span>
-              07:30–15:30
-            </span>
-
-            <small>
-              7h 30m
-            </small>
+            <strong>Mon gym</strong>
+            <span>07:30–15:30</span>
+            <small>7h 30m</small>
           </button>
 
 
@@ -615,17 +643,9 @@
             data-preset="office"
             type="button"
           >
-            <strong>
-              Office
-            </strong>
-
-            <span>
-              07:30–16:30
-            </span>
-
-            <small>
-              8h 30m
-            </small>
+            <strong>Office</strong>
+            <span>07:30–16:30</span>
+            <small>8h 30m</small>
           </button>
 
 
@@ -634,17 +654,9 @@
             data-preset="cycle"
             type="button"
           >
-            <strong>
-              Cycle
-            </strong>
-
-            <span>
-              07:30–16:00
-            </span>
-
-            <small>
-              8h 00m
-            </small>
+            <strong>Cycle</strong>
+            <span>07:30–16:00</span>
+            <small>8h 00m</small>
           </button>
 
 
@@ -653,17 +665,9 @@
             data-preset="wfhLong"
             type="button"
           >
-            <strong>
-              WFH long
-            </strong>
-
-            <span>
-              07:00–16:30
-            </span>
-
-            <small>
-              9h 00m
-            </small>
+            <strong>WFH long</strong>
+            <span>07:00–16:30</span>
+            <small>9h 00m</small>
           </button>
 
 
@@ -672,17 +676,9 @@
             data-preset="wfhGym"
             type="button"
           >
-            <strong>
-              WFH + gym
-            </strong>
-
-            <span>
-              07:00–16:30
-            </span>
-
-            <small>
-              8h 00m
-            </small>
+            <strong>WFH + gym</strong>
+            <span>07:00–16:30</span>
+            <small>8h 00m</small>
           </button>
 
         </div>
@@ -790,16 +786,17 @@
   </div>
 
 
-  <!-- =========================
-       MANAGE FORTNIGHT SHEET
-  ========================== -->
+  <!-- MANAGE FORTNIGHT -->
 
   <div
     id="manageSheet"
     class="sheet-backdrop hidden"
   >
 
-    <section class="sheet">
+    <section
+      id="managePanel"
+      class="sheet"
+    >
 
       <div class="sheet-handle"></div>
 
@@ -832,7 +829,9 @@
 
       <div class="manage-summary-card">
 
-        <span>
+        <span
+          id="manageType"
+        >
           Current fortnight
         </span>
 
@@ -859,6 +858,15 @@
 
 
       <button
+        id="returnCurrentManageBtn"
+        class="primary-btn hidden"
+        type="button"
+      >
+        Return to current fortnight
+      </button>
+
+
+      <button
         id="changeSetupBtn"
         class="secondary-btn"
         type="button"
@@ -871,7 +879,7 @@
   </div>
 
 
-  <script src="./app.js?v=3"></script>
+  <script src="./app.js?v=4"></script>
 
 </body>
 </html>
