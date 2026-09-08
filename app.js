@@ -184,10 +184,9 @@ function timeToMin(value) {
   );
 }
 
-function paidMinutes(day) {
+function rawPaidMinutes(day) {
   if (
     !day ||
-    day.off ||
     !day.start ||
     !day.finish
   ) {
@@ -220,6 +219,17 @@ function paidMinutes(day) {
   );
 }
 
+function paidMinutes(day) {
+  if (
+    !day ||
+    day.off
+  ) {
+    return 0;
+  }
+
+  return rawPaidMinutes(day);
+}
+
 function fmtHM(minutes) {
   const total =
     Math.max(
@@ -245,7 +255,7 @@ function fmtHM(minutes) {
 
 function makeDays(
   start,
-  offWeek
+  normalOffWeek
 ) {
   const offsets = [
     0,
@@ -281,11 +291,11 @@ function makeDays(
 
       off:
         (
-          offWeek === 1 &&
+          normalOffWeek === 1 &&
           index === 4
         ) ||
         (
-          offWeek === 2 &&
+          normalOffWeek === 2 &&
           index === 9
         ),
 
@@ -307,6 +317,7 @@ function blankState() {
     configured: false,
     start,
     offWeek: 2,
+    normalOffWeek: 2,
     days:
       makeDays(
         start,
@@ -319,6 +330,47 @@ function blankState() {
 /* =========================
    STORAGE
 ========================= */
+
+function normaliseFortnight(value) {
+  if (
+    !value ||
+    !value.start ||
+    !Array.isArray(
+      value.days
+    ) ||
+    value.days.length !== 10
+  ) {
+    return null;
+  }
+
+  const result =
+    clone(value);
+
+  /*
+    Older versions only had
+    offWeek. Treat that as the
+    normal repeating pattern.
+  */
+  if (
+    result.normalOffWeek !== 1 &&
+    result.normalOffWeek !== 2
+  ) {
+    result.normalOffWeek =
+      result.offWeek === 1
+        ? 1
+        : 2;
+  }
+
+  /*
+    Keep offWeek too for
+    compatibility with existing
+    data and setup UI.
+  */
+  result.offWeek =
+    result.normalOffWeek;
+
+  return result;
+}
 
 function loadCurrent() {
   const keys = [
@@ -340,16 +392,11 @@ function loadCurrent() {
       }
 
       const value =
-        JSON.parse(raw);
+        normaliseFortnight(
+          JSON.parse(raw)
+        );
 
-      if (
-        value &&
-        value.start &&
-        Array.isArray(
-          value.days
-        ) &&
-        value.days.length === 10
-      ) {
+      if (value) {
         return value;
       }
     }
@@ -380,15 +427,13 @@ function loadHistory() {
     }
 
     return value
-      .filter(
+      .map(
         item =>
-          item &&
-          item.start &&
-          Array.isArray(
-            item.days
-          ) &&
-          item.days.length === 10
+          normaliseFortnight(
+            item
+          )
       )
+      .filter(Boolean)
       .sort(
         (
           a,
@@ -413,6 +458,9 @@ let history =
 let editingIndex =
   null;
 
+let pendingNwdIndex =
+  null;
+
 function persistCurrent() {
   localStorage.setItem(
     CURRENT_KEY,
@@ -430,89 +478,6 @@ function persistHistory() {
     )
   );
 }
-
-
-/* =========================
-   REPAIR OLD ROLLOVER
-========================= */
-
-function repairLegacyRollover() {
-  if (
-    !currentState.configured ||
-    history.length === 0
-  ) {
-    return;
-  }
-
-  const previous =
-    history[
-      history.length - 1
-    ];
-
-  if (
-    currentState.start !==
-    addDays(
-      previous.start,
-      14
-    )
-  ) {
-    return;
-  }
-
-  if (
-    currentState.offWeek ===
-    previous.offWeek
-  ) {
-    return;
-  }
-
-  const friday1 =
-    currentState.days[4] || {};
-
-  const friday2 =
-    currentState.days[9] || {};
-
-  const fridayHasData =
-    [
-      friday1,
-      friday2
-    ].some(
-      day =>
-        day.start ||
-        day.finish ||
-        day.note
-    );
-
-  if (
-    fridayHasData
-  ) {
-    return;
-  }
-
-  currentState.offWeek =
-    previous.offWeek;
-
-  currentState.days.forEach(
-    (
-      day,
-      index
-    ) => {
-      day.off =
-        (
-          currentState.offWeek === 1 &&
-          index === 4
-        ) ||
-        (
-          currentState.offWeek === 2 &&
-          index === 9
-        );
-    }
-  );
-
-  persistCurrent();
-}
-
-repairLegacyRollover();
 
 
 /* =========================
@@ -774,7 +739,7 @@ function renderSetupDates() {
   el(
     "setupOffSummary"
   ).textContent =
-    `W${currentState.offWeek} Fri`;
+    `W${currentState.normalOffWeek} Fri`;
 
   document
     .querySelectorAll(
@@ -796,7 +761,7 @@ function renderSetupDates() {
           .toggle(
             "selected",
             week ===
-            currentState.offWeek
+            currentState.normalOffWeek
           );
       }
     );
@@ -954,7 +919,7 @@ function moveFortnight(
   if (
     nextIndex < 0 ||
     nextIndex >=
-    items.length
+      items.length
   ) {
     return;
   }
@@ -1218,44 +1183,6 @@ function renderOverview() {
         } working days.`;
     }
   }
-
-  const latest =
-    getFortnightByStart(
-      getLatestScheduledStart()
-    );
-
-  const latestEnd =
-    latest
-      ? parseISO(
-          addDays(
-            latest.start,
-            13
-          )
-        )
-      : null;
-
-  const finished =
-    latestEnd
-      ? new Date() >
-        new Date(
-          latestEnd.getFullYear(),
-          latestEnd.getMonth(),
-          latestEnd.getDate(),
-          23,
-          59,
-          59
-        )
-      : false;
-
-  el(
-    "nextFortnightBtn"
-  ).classList.toggle(
-    "hidden",
-    !(
-      viewingLatestScheduled() &&
-      finished
-    )
-  );
 }
 
 
@@ -1284,6 +1211,9 @@ function renderCalendar() {
           const paid =
             paidMinutes(day);
 
+          const rawPaid =
+            rawPaidMinutes(day);
+
           const date =
             parseISO(
               day.date
@@ -1298,6 +1228,29 @@ function renderCalendar() {
                     "short"
                 }
               );
+
+          let hoursText =
+            "—";
+
+          if (
+            day.off
+          ) {
+            hoursText =
+              rawPaid > 0
+                ? `OFF · ${fmtHM(
+                    rawPaid
+                  )} saved`
+                : "OFF";
+          }
+
+          else if (
+            paid > 0
+          ) {
+            hoursText =
+              fmtHM(
+                paid
+              );
+          }
 
           return `
             <button
@@ -1315,7 +1268,7 @@ function renderCalendar() {
                     : ""
                 }
                 ${
-                  paid > 0
+                  rawPaid > 0
                     ? "logged"
                     : ""
                 }
@@ -1333,17 +1286,7 @@ function renderCalendar() {
               </div>
 
               <div class="cal-hours">
-                ${
-                  day.off
-                    ? "OFF"
-                    : (
-                        paid > 0
-                          ? fmtHM(
-                              paid
-                            )
-                          : "—"
-                      )
-                }
+                ${hoursText}
               </div>
 
             </button>
@@ -1447,54 +1390,33 @@ function renderManageSummary() {
       )
     }`;
 
-  const offDate =
-    viewed.offWeek === 1
-      ? addDays(
-          viewed.start,
-          4
-        )
-      : addDays(
-          viewed.start,
-          11
-        );
+  const offDay =
+    viewed.days.find(
+      day =>
+        day.off
+    );
 
   el(
     "manageDayOff"
   ).textContent =
-    `Non-working day: ${
-      fmtDate(
-        offDate,
-        {
-          weekday:
-            "long",
-          day:
-            "numeric",
-          month:
-            "long"
-        }
-      )
-    }`;
+    offDay
+      ? `Non-working day: ${
+          fmtDate(
+            offDay.date,
+            {
+              weekday:
+                "long",
+              day:
+                "numeric",
+              month:
+                "long"
+            }
+          )
+        }`
+      : "No non-working day set";
 
-  /*
-    A new fortnight is always
-    created from the furthest
-    scheduled fortnight.
-  */
   el(
     "startNextBtn"
-  ).classList.toggle(
-    "hidden",
-    !viewingLatestScheduled()
-  );
-
-  /*
-    Setup changes are limited
-    to the furthest scheduled
-    fortnight so older records
-    cannot accidentally be reset.
-  */
-  el(
-    "changeSetupBtn"
   ).classList.toggle(
     "hidden",
     !viewingLatestScheduled()
@@ -1538,6 +1460,228 @@ function closeManage() {
 
   document.body.style.overflow =
     "";
+}
+
+
+/* =========================
+   NON-WORKING DAY PICKER
+========================= */
+
+function getCurrentNwdIndex(
+  fortnight
+) {
+  return fortnight.days.findIndex(
+    day =>
+      day.off
+  );
+}
+
+function renderNwdPicker() {
+  const viewed =
+    getViewedFortnight();
+
+  if (
+    pendingNwdIndex === null
+  ) {
+    pendingNwdIndex =
+      getCurrentNwdIndex(
+        viewed
+      );
+  }
+
+  el(
+    "nwdGrid"
+  ).innerHTML =
+    viewed.days
+      .map(
+        (
+          day,
+          index
+        ) => {
+          const date =
+            parseISO(
+              day.date
+            );
+
+          const weekday =
+            date
+              .toLocaleDateString(
+                "en-GB",
+                {
+                  weekday:
+                    "short"
+                }
+              );
+
+          const rawPaid =
+            rawPaidMinutes(
+              day
+            );
+
+          let status =
+            `W${day.week}`;
+
+          if (
+            rawPaid > 0
+          ) {
+            status =
+              fmtHM(
+                rawPaid
+              );
+          }
+
+          return `
+            <button
+              class="
+                nwd-day
+                ${
+                  index ===
+                  pendingNwdIndex
+                    ? "selected"
+                    : ""
+                }
+                ${
+                  rawPaid > 0
+                    ? "has-hours"
+                    : ""
+                }
+              "
+              data-nwd="${index}"
+              type="button"
+            >
+
+              <span class="nwd-dow">
+                ${weekday}
+              </span>
+
+              <span class="nwd-date">
+                ${date.getDate()}
+              </span>
+
+              <span class="nwd-status">
+                ${status}
+              </span>
+
+            </button>
+          `;
+        }
+      )
+      .join("");
+
+  document
+    .querySelectorAll(
+      "[data-nwd]"
+    )
+    .forEach(
+      button => {
+        button.addEventListener(
+          "click",
+          () => {
+            pendingNwdIndex =
+              Number(
+                button.dataset.nwd
+              );
+
+            renderNwdPicker();
+          }
+        );
+      }
+    );
+
+  const selected =
+    viewed.days[
+      pendingNwdIndex
+    ];
+
+  const hasHours =
+    selected &&
+    rawPaidMinutes(
+      selected
+    ) > 0;
+
+  el(
+    "nwdWarning"
+  ).classList.toggle(
+    "hidden",
+    !hasHours
+  );
+}
+
+function openNwdPicker() {
+  const viewed =
+    getViewedFortnight();
+
+  pendingNwdIndex =
+    getCurrentNwdIndex(
+      viewed
+    );
+
+  closeManage();
+
+  renderNwdPicker();
+
+  el(
+    "nwdSheet"
+  ).classList.remove(
+    "hidden"
+  );
+
+  document.body.style.overflow =
+    "hidden";
+
+  requestAnimationFrame(
+    () => {
+      el(
+        "nwdPanel"
+      ).scrollTop = 0;
+    }
+  );
+}
+
+function closeNwdPicker() {
+  el(
+    "nwdSheet"
+  ).classList.add(
+    "hidden"
+  );
+
+  document.body.style.overflow =
+    "";
+
+  pendingNwdIndex =
+    null;
+}
+
+function saveNwdChange() {
+  if (
+    pendingNwdIndex === null
+  ) {
+    return;
+  }
+
+  const viewed =
+    clone(
+      getViewedFortnight()
+    );
+
+  viewed.days.forEach(
+    (
+      day,
+      index
+    ) => {
+      day.off =
+        index ===
+        pendingNwdIndex;
+    }
+  );
+
+  saveViewedFortnight(
+    viewed
+  );
+
+  closeNwdPicker();
+
+  renderTracker();
 }
 
 
@@ -1626,10 +1770,6 @@ function archiveCurrentFortnight() {
 }
 
 function startNextFortnight() {
-  /*
-    currentState is always the
-    furthest-created fortnight.
-  */
   archiveCurrentFortnight();
 
   const newStart =
@@ -1638,8 +1778,15 @@ function startNextFortnight() {
       14
     );
 
-  const offWeek =
-    currentState.offWeek;
+  /*
+    Inherit the normal repeating
+    pattern, not the actual moved
+    NWD in the current fortnight.
+  */
+  const normalOffWeek =
+    currentState.normalOffWeek === 1
+      ? 1
+      : 2;
 
   currentState = {
     configured:
@@ -1648,20 +1795,19 @@ function startNextFortnight() {
     start:
       newStart,
 
-    offWeek,
+    offWeek:
+      normalOffWeek,
+
+    normalOffWeek:
+      normalOffWeek,
 
     days:
       makeDays(
         newStart,
-        offWeek
+        normalOffWeek
       )
   };
 
-  /*
-    When deliberately creating
-    another future period, show
-    the new one immediately.
-  */
   viewedStart =
     newStart;
 
@@ -1682,6 +1828,7 @@ function returnToCurrent() {
     getDateCurrentStart();
 
   closeManage();
+  closeNwdPicker();
 
   window.scrollTo({
     top: 0,
@@ -1806,7 +1953,7 @@ function refreshEditorTotal() {
     );
 
   const paid =
-    paidMinutes(
+    rawPaidMinutes(
       temp
     );
 
@@ -2114,7 +2261,7 @@ function bindEvents() {
         button.addEventListener(
           "click",
           () => {
-            currentState.offWeek =
+            const week =
               Number(
                 button.dataset.off
                   .replace(
@@ -2122,6 +2269,12 @@ function bindEvents() {
                     ""
                   )
               );
+
+            currentState.offWeek =
+              week;
+
+            currentState.normalOffWeek =
+              week;
 
             renderSetupDates();
           }
@@ -2215,8 +2368,11 @@ function bindEvents() {
       currentState.days =
         makeDays(
           currentState.start,
-          currentState.offWeek
+          currentState.normalOffWeek
         );
+
+      currentState.offWeek =
+        currentState.normalOffWeek;
 
       currentState.configured =
         true;
@@ -2308,6 +2464,14 @@ function bindEvents() {
 
 
   el(
+    "changeNwdBtn"
+  ).addEventListener(
+    "click",
+    openNwdPicker
+  );
+
+
+  el(
     "returnCurrentManageBtn"
   ).addEventListener(
     "click",
@@ -2332,36 +2496,35 @@ function bindEvents() {
 
 
   el(
-    "changeSetupBtn"
+    "closeNwd"
   ).addEventListener(
     "click",
-    () => {
+    closeNwdPicker
+  );
+
+
+  el(
+    "nwdSheet"
+  ).addEventListener(
+    "click",
+    event => {
       if (
-        !viewingLatestScheduled()
+        event.target ===
+        el(
+          "nwdSheet"
+        )
       ) {
-        return;
+        closeNwdPicker();
       }
-
-      const confirmed =
-        confirm(
-          "Change the latest scheduled fortnight setup? Creating it again will reset the logged days in that fortnight."
-        );
-
-      if (
-        !confirmed
-      ) {
-        return;
-      }
-
-      closeManage();
-
-      currentState.configured =
-        false;
-
-      persistCurrent();
-
-      renderShell();
     }
+  );
+
+
+  el(
+    "saveNwdBtn"
+  ).addEventListener(
+    "click",
+    saveNwdChange
   );
 
 
@@ -2577,6 +2740,9 @@ function bindEvents() {
 /* =========================
    START
 ========================= */
+
+persistCurrent();
+persistHistory();
 
 bindEvents();
 renderShell();
