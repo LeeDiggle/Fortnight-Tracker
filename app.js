@@ -1,1775 +1,912 @@
-const TARGET = 75 * 60;
-const KEY = "fortnightTracker.v3";
-const HISTORY_KEY = "fortnightTracker.history.v1";
-
-const presets = {
-  monday: {
-    start: "07:30",
-    finish: "15:30",
-    break: 30,
-    note: "Mon gym"
-  },
-  office: {
-    start: "07:30",
-    finish: "16:30",
-    break: 30,
-    note: "Office"
-  },
-  cycle: {
-    start: "07:30",
-    finish: "16:00",
-    break: 30,
-    note: "Cycle / office"
-  },
-  wfhLong: {
-    start: "07:00",
-    finish: "16:30",
-    break: 30,
-    note: "WFH long"
-  },
-  wfhGym: {
-    start: "07:00",
-    finish: "16:30",
-    break: 90,
-    note: "WFH + gym"
-  }
-};
-
-const startOptions = [
-  "06:30",
-  "07:00",
-  "07:30",
-  "08:00"
-];
-
-const finishOptions = [
-  "15:30",
-  "16:00",
-  "16:30",
-  "17:00"
-];
-
-const breakOptions = [
-  30,
-  60,
-  90
-];
-
-const el = id =>
-  document.getElementById(id);
-
-const pad = n =>
-  String(n).padStart(2, "0");
-
-
-function localISO(date) {
-  return [
-    date.getFullYear(),
-    pad(date.getMonth() + 1),
-    pad(date.getDate())
-  ].join("-");
+:root{
+  --bg:#0d0f12;
+  --panel:#171a1f;
+  --panel2:#20242b;
+  --panel3:#101317;
+  --line:#30353e;
+  --text:#f6f7f8;
+  --muted:#9da4af;
+  --orange:#ff8614;
+  --orange2:#ffa03d;
+  --green:#55d98b;
+  --red:#ff7474;
+  --shadow:0 20px 55px rgba(0,0,0,.35);
 }
 
-
-function parseISO(value) {
-  if (!value) {
-    return new Date();
-  }
-
-  const parts =
-    value.split("-").map(Number);
-
-  if (
-    parts.length !== 3 ||
-    parts.some(Number.isNaN)
-  ) {
-    return new Date();
-  }
-
-  return new Date(
-    parts[0],
-    parts[1] - 1,
-    parts[2],
-    12,
-    0,
-    0
-  );
+*{
+  box-sizing:border-box;
 }
 
-
-function addDays(value, amount) {
-  const date =
-    parseISO(value);
-
-  date.setDate(
-    date.getDate() + amount
-  );
-
-  return localISO(date);
+html{
+  background:var(--bg);
 }
 
-
-function mondayOf(date = new Date()) {
-  const d =
-    date instanceof Date
-      ? new Date(date)
-      : parseISO(date);
-
-  const weekday =
-    d.getDay();
-
-  const adjustment =
-    weekday === 0
-      ? -6
-      : 1 - weekday;
-
-  d.setDate(
-    d.getDate() + adjustment
-  );
-
-  return localISO(d);
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;
 }
 
+button,
+input{
+  font:inherit;
+}
 
-function fmtDate(
-  value,
-  options = {
-    weekday: "short",
-    day: "numeric",
-    month: "short"
-  }
-) {
-  return parseISO(value)
-    .toLocaleDateString(
-      "en-GB",
-      options
+button{
+  -webkit-tap-highlight-color:transparent;
+}
+
+h1,
+h2,
+h3,
+p{
+  margin-top:0;
+}
+
+h1{
+  font-size:30px;
+  line-height:1.05;
+  letter-spacing:-.04em;
+  margin-bottom:5px;
+}
+
+h2{
+  font-size:20px;
+  letter-spacing:-.025em;
+  margin-bottom:5px;
+}
+
+h3{
+  margin-bottom:6px;
+}
+
+.app-shell{
+  max-width:760px;
+  margin:0 auto;
+  padding:
+    calc(18px + env(safe-area-inset-top))
+    16px
+    calc(36px + env(safe-area-inset-bottom));
+}
+
+.topbar{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:22px;
+}
+
+.header-main{
+  min-width:0;
+  flex:1;
+}
+
+.header-subtitle{
+  color:var(--muted);
+  font-size:17px;
+}
+
+.eyebrow,
+.section-label{
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.1em;
+  color:var(--muted);
+  text-transform:uppercase;
+}
+
+.muted{
+  color:var(--muted);
+}
+
+.hidden{
+  display:none!important;
+}
+
+.card,
+.hero-card{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:17px;
+  margin-bottom:14px;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.02) inset;
+}
+
+.hero-card{
+  display:flex;
+  gap:14px;
+  align-items:flex-start;
+}
+
+.step{
+  background:var(--orange);
+  color:#121212;
+  border-radius:50%;
+  width:34px;
+  height:34px;
+  display:grid;
+  place-items:center;
+  font-weight:900;
+  flex:0 0 34px;
+}
+
+.icon-btn,
+.square-btn{
+  border:1px solid var(--line);
+  background:var(--panel2);
+  color:var(--text);
+  border-radius:12px;
+  min-width:44px;
+  height:44px;
+  font-size:24px;
+}
+
+.date-row{
+  display:grid;
+  grid-template-columns:44px minmax(0,1fr) 44px;
+  gap:8px;
+  align-items:center;
+}
+
+.date-button{
+  border:1px solid var(--line);
+  background:var(--panel3);
+  color:var(--text);
+  border-radius:12px;
+  min-height:48px;
+  padding:10px 10px;
+  text-align:center;
+  font-weight:700;
+  font-size:14px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.visually-hidden-date{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+
+.field-label{
+  display:block;
+  margin-bottom:7px;
+}
+
+.gap-top{
+  margin-top:16px;
+}
+
+.choice-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px;
+}
+
+.choice-btn{
+  border:1px solid var(--line);
+  background:var(--panel2);
+  color:var(--text);
+  border-radius:14px;
+  padding:14px 10px;
+  min-height:78px;
+}
+
+.choice-btn.selected{
+  background:var(--orange);
+  border-color:var(--orange);
+  color:#111;
+}
+
+.choice-title{
+  display:block;
+  font-weight:800;
+}
+
+.choice-date{
+  display:block;
+  font-size:13px;
+  margin-top:4px;
+  opacity:.85;
+}
+
+.primary-btn{
+  width:100%;
+  border:0;
+  border-radius:14px;
+  min-height:50px;
+  background:var(--orange);
+  color:#111;
+  font-weight:900;
+  font-size:16px;
+  margin-top:16px;
+}
+
+.secondary-btn{
+  width:100%;
+  border:1px solid var(--line);
+  border-radius:14px;
+  min-height:50px;
+  background:var(--panel2);
+  color:var(--text);
+  font-weight:800;
+  font-size:16px;
+  margin-top:10px;
+}
+
+.secondary-action{
+  width:100%;
+  border:1px solid var(--orange);
+  border-radius:14px;
+  min-height:50px;
+  background:transparent;
+  color:var(--orange);
+  font-weight:900;
+  font-size:16px;
+  margin-top:14px;
+}
+
+.text-btn{
+  width:100%;
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  min-height:44px;
+  margin-top:4px;
+}
+
+.compact{
+  padding:12px 16px;
+}
+
+.mini-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  text-align:center;
+}
+
+.mini-grid div{
+  border-right:1px solid var(--line);
+}
+
+.mini-grid div:last-child{
+  border-right:0;
+}
+
+.mini-grid span{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+}
+
+.mini-grid strong{
+  display:block;
+  margin-top:4px;
+}
+
+/* Fortnight navigation */
+
+.fortnight-nav{
+  display:grid;
+  grid-template-columns:34px minmax(0,1fr) 34px;
+  align-items:center;
+  gap:6px;
+  margin-top:7px;
+  max-width:330px;
+}
+
+.nav-arrow{
+  width:34px;
+  height:34px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:var(--panel2);
+  color:var(--text);
+  font-size:22px;
+  line-height:1;
+  display:grid;
+  place-items:center;
+  padding:0;
+}
+
+.nav-arrow:disabled{
+  opacity:.25;
+}
+
+.fortnight-range-wrap{
+  min-width:0;
+  text-align:center;
+}
+
+.fortnight-range-wrap .header-subtitle{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.past-badge{
+  display:inline-block;
+  margin-top:4px;
+  padding:3px 8px;
+  border-radius:99px;
+  background:rgba(255,134,20,.12);
+  border:1px solid rgba(255,134,20,.35);
+  color:var(--orange);
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
+
+.return-current{
+  width:100%;
+  border:1px solid rgba(255,134,20,.45);
+  background:rgba(255,134,20,.08);
+  color:var(--orange);
+  border-radius:14px;
+  min-height:46px;
+  font-weight:800;
+  margin-bottom:14px;
+}
+
+/* Progress */
+
+.card-title-row{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.progress-card{
+  padding:18px;
+}
+
+.progress-headline{
+  margin-top:4px;
+}
+
+.percent{
+  font-size:22px;
+  font-weight:900;
+  color:var(--orange);
+}
+
+.progress-track{
+  height:10px;
+  background:var(--panel2);
+  border-radius:99px;
+  overflow:hidden;
+  margin:14px 0;
+}
+
+.progress-bar{
+  height:100%;
+  width:0;
+  background:
+    linear-gradient(
+      90deg,
+      var(--orange),
+      var(--orange2)
     );
+  border-radius:99px;
+  transition:width .25s ease;
 }
 
-
-function timeToMin(value) {
-  if (!value) {
-    return null;
-  }
-
-  const [hours, minutes] =
-    value.split(":").map(Number);
-
-  return (
-    hours * 60 +
-    minutes
-  );
+.metric-grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:9px;
 }
 
-
-function paidMinutes(day) {
-  if (
-    !day ||
-    day.off ||
-    !day.start ||
-    !day.finish
-  ) {
-    return 0;
-  }
-
-  const start =
-    timeToMin(day.start);
-
-  const finish =
-    timeToMin(day.finish);
-
-  if (finish <= start) {
-    return 0;
-  }
-
-  return Math.max(
-    0,
-    finish -
-      start -
-      Number(day.break || 0)
-  );
+.metric{
+  background:var(--panel3);
+  border-radius:14px;
+  padding:12px;
 }
 
-
-function fmtHM(minutes) {
-  const total =
-    Math.max(
-      0,
-      Math.round(minutes)
-    );
-
-  const hours =
-    Math.floor(total / 60);
-
-  const mins =
-    total % 60;
-
-  return `${hours}h ${pad(mins)}m`;
+.metric span{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
 }
 
-
-function makeDays(
-  start,
-  offWeek
-) {
-  const offsets = [
-    0, 1, 2, 3, 4,
-    7, 8, 9, 10, 11
-  ];
-
-  return offsets.map(
-    (offset, index) => ({
-      date:
-        addDays(start, offset),
-
-      week:
-        index < 5 ? 1 : 2,
-
-      weekday:
-        index % 5,
-
-      off:
-        (
-          offWeek === 1 &&
-          index === 4
-        ) ||
-        (
-          offWeek === 2 &&
-          index === 9
-        ),
-
-      start: "",
-      finish: "",
-      break: 30,
-      note: ""
-    })
-  );
+.metric strong{
+  display:block;
+  font-size:20px;
+  margin-top:3px;
 }
 
-
-function blankState() {
-  const start =
-    mondayOf(new Date());
-
-  return {
-    configured: false,
-    start,
-    offWeek: 2,
-    days:
-      makeDays(start, 2)
-  };
+.pace-box{
+  margin-top:12px;
+  border:1px solid var(--line);
+  background:var(--panel3);
+  border-radius:14px;
+  padding:12px;
+  font-size:13px;
+  line-height:1.45;
 }
 
-
-function load() {
-  try {
-    const current =
-      localStorage.getItem(KEY);
-
-    if (current) {
-      const saved =
-        JSON.parse(current);
-
-      if (
-        saved &&
-        saved.start &&
-        Array.isArray(saved.days) &&
-        saved.days.length === 10
-      ) {
-        return saved;
-      }
-    }
-
-    const previousKeys = [
-      "fortnightTracker.v2",
-      "fortnightTracker.v1"
-    ];
-
-    for (
-      const previousKey
-      of previousKeys
-    ) {
-      const raw =
-        localStorage.getItem(
-          previousKey
-        );
-
-      if (!raw) {
-        continue;
-      }
-
-      const previous =
-        JSON.parse(raw);
-
-      if (
-        previous &&
-        previous.start &&
-        Array.isArray(previous.days) &&
-        previous.days.length === 10
-      ) {
-        localStorage.setItem(
-          KEY,
-          JSON.stringify(previous)
-        );
-
-        return previous;
-      }
-    }
-  }
-  catch (error) {
-    console.log(
-      "Could not load saved fortnight.",
-      error
-    );
-  }
-
-  return blankState();
+.pace-box.neutral{
+  border-color:var(--line);
+  background:var(--panel3);
 }
 
-
-function loadHistory() {
-  try {
-    const raw =
-      localStorage.getItem(
-        HISTORY_KEY
-      );
-
-    if (!raw) {
-      return [];
-    }
-
-    const history =
-      JSON.parse(raw);
-
-    return Array.isArray(history)
-      ? history
-      : [];
-  }
-  catch {
-    return [];
-  }
+.pace-box.good{
+  border-color:rgba(85,217,139,.45);
+  background:rgba(85,217,139,.08);
 }
 
-
-function saveHistory(history) {
-  localStorage.setItem(
-    HISTORY_KEY,
-    JSON.stringify(history)
-  );
+.pace-box.warn{
+  border-color:rgba(255,134,20,.45);
+  background:rgba(255,134,20,.08);
 }
 
+/* Calendar */
 
-let state =
-  load();
-
-let editingIndex =
-  null;
-
-
-function persist() {
-  localStorage.setItem(
-    KEY,
-    JSON.stringify(state)
-  );
+.calendar-card{
+  padding:18px;
 }
 
-
-function renderSetupDates() {
-  el(
-    "startDateButton"
-  ).textContent =
-    fmtDate(
-      state.start,
-      {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric"
-      }
-    );
-
-  el(
-    "startDateNative"
-  ).value =
-    state.start;
-
-  el(
-    "week1FridayLabel"
-  ).textContent =
-    fmtDate(
-      addDays(
-        state.start,
-        4
-      )
-    );
-
-  el(
-    "week2FridayLabel"
-  ).textContent =
-    fmtDate(
-      addDays(
-        state.start,
-        11
-      )
-    );
-
-  el(
-    "setupOffSummary"
-  ).textContent =
-    `W${state.offWeek} Fri`;
-
-  document
-    .querySelectorAll(
-      ".choice-btn"
-    )
-    .forEach(button => {
-      const week =
-        Number(
-          button.dataset.off
-            .replace(
-              "week",
-              ""
-            )
-        );
-
-      button.classList.toggle(
-        "selected",
-        week ===
-          state.offWeek
-      );
-    });
+.calendar-card h2{
+  margin-top:4px;
+  margin-bottom:0;
 }
 
-
-function renderShell() {
-  const end =
-    addDays(
-      state.start,
-      13
-    );
-
-  el(
-    "fortnightRange"
-  ).textContent =
-    state.configured
-      ? `${
-          fmtDate(
-            state.start,
-            {
-              day: "numeric",
-              month: "short"
-            }
-          )
-        } – ${
-          fmtDate(
-            end,
-            {
-              day: "numeric",
-              month: "short",
-              year: "numeric"
-            }
-          )
-        }`
-      : "Set up your fortnight";
-
-  el(
-    "setupView"
-  ).classList.toggle(
-    "hidden",
-    state.configured
-  );
-
-  el(
-    "trackerView"
-  ).classList.toggle(
-    "hidden",
-    !state.configured
-  );
-
-  renderSetupDates();
-
-  if (
-    state.configured
-  ) {
-    renderOverview();
-    renderCalendar();
-    renderManageSummary();
-  }
+.calendar-grid{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:8px;
+  margin-top:16px;
 }
 
-
-function getStats() {
-  const worked =
-    state.days.reduce(
-      (
-        total,
-        day
-      ) =>
-        total +
-        paidMinutes(day),
-      0
-    );
-
-  const remaining =
-    Math.max(
-      0,
-      TARGET - worked
-    );
-
-  const workingDays =
-    state.days.filter(
-      day => !day.off
-    );
-
-  const loggedDays =
-    workingDays.filter(
-      day =>
-        paidMinutes(day) > 0
-    );
-
-  const unlogged =
-    workingDays.length -
-    loggedDays.length;
-
-  const average =
-    unlogged
-      ? remaining / unlogged
-      : 0;
-
-  const percent =
-    Math.min(
-      100,
-      Math.round(
-        worked /
-          TARGET *
-          100
-      )
-    );
-
-  return {
-    worked,
-    remaining,
-    workingDays,
-    loggedDays,
-    unlogged,
-    average,
-    percent
-  };
+.cal-cell{
+  min-height:86px;
+  background:var(--panel3);
+  border:1px solid var(--line);
+  border-radius:13px;
+  padding:9px;
+  position:relative;
+  color:var(--text);
+  text-align:left;
 }
 
-
-function renderOverview() {
-  const stats =
-    getStats();
-
-  el(
-    "progressHeadline"
-  ).textContent =
-    `${fmtHM(stats.worked)} of 75h`;
-
-  el(
-    "progressPercent"
-  ).textContent =
-    `${stats.percent}%`;
-
-  el(
-    "progressBar"
-  ).style.width =
-    `${stats.percent}%`;
-
-  el(
-    "workedMetric"
-  ).textContent =
-    fmtHM(stats.worked);
-
-  el(
-    "remainingMetric"
-  ).textContent =
-    fmtHM(stats.remaining);
-
-  el(
-    "daysLeftMetric"
-  ).textContent =
-    stats.unlogged;
-
-  el(
-    "avgMetric"
-  ).textContent =
-    fmtHM(stats.average);
-
-  const pace =
-    el("paceMessage");
-
-  pace.className =
-    "pace-box";
-
-  if (
-    stats.worked >= TARGET
-  ) {
-    pace.classList.add(
-      "good"
-    );
-
-    pace.innerHTML =
-      `<strong>Target reached.</strong> ` +
-      `You are ${
-        fmtHM(
-          stats.worked -
-          TARGET
-        )
-      } over 75 hours.`;
-  }
-  else if (
-    stats.loggedDays.length === 0
-  ) {
-    pace.classList.add(
-      "neutral"
-    );
-
-    pace.innerHTML =
-      `<strong>${
-        fmtHM(
-          stats.remaining
-        )
-      } remaining.</strong> ` +
-      `Average ${
-        fmtHM(
-          stats.average
-        )
-      } across ${
-        stats.unlogged
-      } unlogged working days.`;
-  }
-  else {
-    const expectedPerDay =
-      TARGET / 9;
-
-    const expectedWorked =
-      expectedPerDay *
-      stats.loggedDays.length;
-
-    const difference =
-      stats.worked -
-      expectedWorked;
-
-    if (
-      difference >= 15
-    ) {
-      pace.classList.add(
-        "good"
-      );
-
-      pace.innerHTML =
-        `<strong>You're ahead.</strong> ` +
-        `${fmtHM(
-          stats.remaining
-        )} remaining, averaging ${
-          fmtHM(
-            stats.average
-          )
-        } across ${
-          stats.unlogged
-        } working days.`;
-    }
-    else if (
-      difference <= -15
-    ) {
-      pace.classList.add(
-        "warn"
-      );
-
-      pace.innerHTML =
-        `<strong>You're slightly behind pace.</strong> ` +
-        `${fmtHM(
-          stats.remaining
-        )} remaining, averaging ${
-          fmtHM(
-            stats.average
-          )
-        } across ${
-          stats.unlogged
-        } working days.`;
-    }
-    else {
-      pace.classList.add(
-        "neutral"
-      );
-
-      pace.innerHTML =
-        `<strong>On track.</strong> ` +
-        `${fmtHM(
-          stats.remaining
-        )} remaining, averaging ${
-          fmtHM(
-            stats.average
-          )
-        } across ${
-          stats.unlogged
-        } working days.`;
-    }
-  }
-
-  const end =
-    parseISO(
-      addDays(
-        state.start,
-        13
-      )
-    );
-
-  const today =
-    new Date();
-
-  const finished =
-    today >
-    new Date(
-      end.getFullYear(),
-      end.getMonth(),
-      end.getDate(),
-      23,
-      59,
-      59
-    );
-
-  el(
-    "nextFortnightBtn"
-  ).classList.toggle(
-    "hidden",
-    !finished
-  );
+.cal-cell.today{
+  outline:2px solid var(--orange);
 }
 
-
-function renderCalendar() {
-  const today =
-    localISO(
-      new Date()
-    );
-
-  el(
-    "calendarGrid"
-  ).innerHTML =
-    state.days
-      .map(
-        (
-          day,
-          index
-        ) => {
-          const paid =
-            paidMinutes(day);
-
-          const date =
-            parseISO(
-              day.date
-            );
-
-          const weekday =
-            date.toLocaleDateString(
-              "en-GB",
-              {
-                weekday:
-                  "short"
-              }
-            );
-
-          const logged =
-            paid > 0;
-
-          return `
-            <button
-              class="
-                cal-cell
-                ${
-                  day.date === today
-                    ? "today"
-                    : ""
-                }
-                ${
-                  day.off
-                    ? "off"
-                    : ""
-                }
-                ${
-                  logged
-                    ? "logged"
-                    : ""
-                }
-              "
-              data-cal="${index}"
-              type="button"
-            >
-              <div class="dow">
-                ${weekday}
-                ·
-                W${day.week}
-              </div>
-
-              <div class="date">
-                ${date.getDate()}
-              </div>
-
-              <div class="cal-hours">
-                ${
-                  day.off
-                    ? "OFF"
-                    : (
-                        logged
-                          ? fmtHM(paid)
-                          : "—"
-                      )
-                }
-              </div>
-            </button>
-          `;
-        }
-      )
-      .join("");
-
-  document
-    .querySelectorAll(
-      "[data-cal]"
-    )
-    .forEach(button => {
-      button.onclick =
-        () =>
-          openEditor(
-            Number(
-              button.dataset.cal
-            )
-          );
-    });
+.cal-cell.off{
+  opacity:.58;
 }
 
-
-function renderManageSummary() {
-  const end =
-    addDays(
-      state.start,
-      13
-    );
-
-  el(
-    "manageRange"
-  ).textContent =
-    `${
-      fmtDate(
-        state.start,
-        {
-          day: "numeric",
-          month: "short",
-          year: "numeric"
-        }
-      )
-    } – ${
-      fmtDate(
-        end,
-        {
-          day: "numeric",
-          month: "short",
-          year: "numeric"
-        }
-      )
-    }`;
-
-  const offDate =
-    state.offWeek === 1
-      ? addDays(
-          state.start,
-          4
-        )
-      : addDays(
-          state.start,
-          11
-        );
-
-  el(
-    "manageDayOff"
-  ).textContent =
-    `Non-working day: ${
-      fmtDate(
-        offDate,
-        {
-          weekday: "long",
-          day: "numeric",
-          month: "long"
-        }
-      )
-    }`;
+.cal-cell.logged{
+  border-color:rgba(255,134,20,.45);
 }
 
-
-function renderOptionButtons(
-  container,
-  options,
-  value,
-  kind
-) {
-  el(container).innerHTML =
-    options
-      .map(option => {
-        const label =
-          kind === "break"
-            ? `${option}m`
-            : option;
-
-        const className =
-          kind === "break"
-            ? "break-btn"
-            : "time-btn";
-
-        return `
-          <button
-            class="
-              ${className}
-              ${
-                String(option) ===
-                String(value)
-                  ? "selected"
-                  : ""
-              }
-            "
-            data-value="${option}"
-            type="button"
-          >
-            ${label}
-          </button>
-        `;
-      })
-      .join("");
+.cal-cell .dow{
+  font-size:10px;
+  color:var(--muted);
+  text-transform:uppercase;
+  white-space:nowrap;
 }
 
-
-function clearPresetSelection() {
-  document
-    .querySelectorAll(
-      ".preset"
-    )
-    .forEach(
-      button =>
-        button.classList.remove(
-          "selected"
-        )
-    );
+.cal-cell .date{
+  font-size:18px;
+  font-weight:900;
+  margin-top:2px;
 }
 
-
-function editorValue() {
-  const start =
-    document.querySelector(
-      "#startButtons .selected"
-    );
-
-  const finish =
-    document.querySelector(
-      "#finishButtons .selected"
-    );
-
-  const breakButton =
-    document.querySelector(
-      "#breakButtons .selected"
-    );
-
-  return {
-    start:
-      start?.dataset.value ||
-      "",
-
-    finish:
-      finish?.dataset.value ||
-      "",
-
-    break:
-      Number(
-        breakButton
-          ?.dataset.value ||
-        30
-      ),
-
-    note:
-      el("dayNote")
-        .value
-        .trim()
-  };
+.cal-cell .cal-hours{
+  position:absolute;
+  bottom:8px;
+  left:9px;
+  font-size:11px;
+  color:var(--orange);
+  white-space:nowrap;
 }
 
+.legend{
+  display:flex;
+  gap:14px;
+  flex-wrap:wrap;
+  margin-top:14px;
+  color:var(--muted);
+  font-size:12px;
+}
 
-function refreshEditorTotal() {
-  const temp = {
-    ...editorValue(),
-    off: false
-  };
+.dot{
+  display:inline-block;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  margin-right:5px;
+  background:var(--line);
+}
 
-  const paid =
-    paidMinutes(temp);
+.dot.today{
+  background:var(--orange);
+}
 
-  el(
-    "editorPaid"
-  ).textContent =
-    fmtHM(paid);
+.dot.off{
+  background:#68707d;
+}
 
-  const warning =
-    el("dayWarning");
+.dash{
+  display:inline-block;
+  margin-right:5px;
+  color:var(--muted);
+}
 
-  let text = "";
+.dash::before{
+  content:"—";
+}
 
-  if (
-    temp.start &&
-    temp.finish &&
-    timeToMin(
-      temp.finish
-    ) <=
-    timeToMin(
-      temp.start
-    )
-  ) {
-    text =
-      "Finish time must be later than start time.";
-  }
-  else if (
-    paid > 540
-  ) {
-    text =
-      "This is more than 9 paid hours.";
-  }
-  else if (
-    paid > 0 &&
-    paid < 360
-  ) {
-    text =
-      "This is under 6 paid hours.";
+/* Settings */
+
+.fortnight-settings{
+  padding:18px;
+}
+
+.settings-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:0;
+  margin-top:14px;
+}
+
+.settings-grid > div{
+  padding:0 12px;
+  border-right:1px solid var(--line);
+}
+
+.settings-grid > div:first-child{
+  padding-left:0;
+}
+
+.settings-grid > div:last-child{
+  padding-right:0;
+  border-right:0;
+}
+
+.settings-grid span{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+}
+
+.settings-grid strong{
+  display:block;
+  margin-top:4px;
+  font-size:15px;
+}
+
+.settings-grid small{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+  margin-top:2px;
+}
+
+.manage-btn{
+  width:100%;
+  min-height:56px;
+  margin-top:18px;
+  padding:0 14px;
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:12px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--panel3);
+  color:var(--text);
+  font-weight:800;
+  text-align:left;
+}
+
+.manage-icon{
+  font-size:20px;
+  color:var(--orange);
+}
+
+.manage-arrow{
+  font-size:28px;
+  color:var(--muted);
+  line-height:1;
+}
+
+/* Sheets */
+
+.sheet-backdrop{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.66);
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  z-index:20;
+}
+
+.sheet{
+  width:min(760px,100%);
+  max-height:92dvh;
+  overflow:auto;
+  background:#111419;
+  border:1px solid var(--line);
+  border-bottom:0;
+  border-radius:24px 24px 0 0;
+  padding:
+    10px
+    16px
+    calc(22px + env(safe-area-inset-bottom));
+  box-shadow:var(--shadow);
+  overscroll-behavior:contain;
+}
+
+.sheet-handle{
+  width:42px;
+  height:5px;
+  border-radius:99px;
+  background:#555c67;
+  margin:0 auto 10px;
+}
+
+.sheet-header{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:start;
+  gap:12px;
+  margin-bottom:16px;
+}
+
+.back-btn{
+  border:0;
+  background:transparent;
+  color:var(--orange);
+  min-height:44px;
+  padding:0;
+  font-weight:800;
+  font-size:16px;
+}
+
+.sheet-title{
+  text-align:center;
+}
+
+.sheet-title h2{
+  margin-top:3px;
+}
+
+.preset-grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:8px;
+  margin-top:8px;
+}
+
+.preset{
+  border:1px solid var(--line);
+  background:var(--panel2);
+  color:var(--text);
+  border-radius:14px;
+  min-height:82px;
+  padding:11px;
+}
+
+.preset strong,
+.preset span,
+.preset small{
+  display:block;
+}
+
+.preset span{
+  font-size:12px;
+  margin-top:3px;
+}
+
+.preset small{
+  font-size:11px;
+  color:var(--muted);
+  margin-top:2px;
+}
+
+.preset.selected,
+.time-btn.selected,
+.break-btn.selected{
+  background:var(--orange);
+  border-color:var(--orange);
+  color:#111;
+}
+
+.preset.selected small{
+  color:#31200f;
+}
+
+.divider{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:var(--muted);
+  font-size:11px;
+  margin:17px 0;
+}
+
+.divider::before,
+.divider::after{
+  content:"";
+  height:1px;
+  background:var(--line);
+  flex:1;
+}
+
+.time-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  margin:8px 0 15px;
+}
+
+.break-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin:8px 0 15px;
+}
+
+.time-btn,
+.break-btn{
+  border:1px solid var(--line);
+  background:var(--panel2);
+  color:var(--text);
+  border-radius:12px;
+  min-height:46px;
+  font-weight:800;
+}
+
+.summary-card{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:15px;
+  padding:13px;
+  margin-top:4px;
+}
+
+.summary-card span{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+}
+
+.summary-card strong{
+  display:block;
+  font-size:28px;
+  color:var(--orange);
+  margin-top:3px;
+}
+
+.text-input{
+  width:100%;
+  min-height:48px;
+  border:1px solid var(--line);
+  background:var(--bg);
+  color:var(--text);
+  border-radius:12px;
+  padding:11px 12px;
+}
+
+.warning{
+  margin-top:10px;
+  color:var(--red);
+  font-size:13px;
+}
+
+.off-panel{
+  text-align:center;
+  padding:26px 10px;
+}
+
+.off-icon{
+  width:52px;
+  height:52px;
+  margin:0 auto 12px;
+  border-radius:50%;
+  background:var(--panel2);
+  display:grid;
+  place-items:center;
+  color:var(--orange);
+  font-size:26px;
+  font-weight:900;
+}
+
+.manage-summary-card{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:15px;
+  padding:14px;
+}
+
+.manage-summary-card span,
+.manage-summary-card small{
+  display:block;
+  color:var(--muted);
+}
+
+.manage-summary-card strong{
+  display:block;
+  margin-top:4px;
+  font-size:20px;
+}
+
+.manage-summary-card small{
+  margin-top:4px;
+}
+
+@media(max-width:390px){
+
+  .app-shell{
+    padding-left:14px;
+    padding-right:14px;
   }
 
-  warning.textContent =
-    text;
-
-  warning.classList.toggle(
-    "hidden",
-    !text
-  );
-}
-
-
-function bindChoiceButtons(
-  container
-) {
-  el(container)
-    .querySelectorAll(
-      "button"
-    )
-    .forEach(button => {
-      button.onclick = () => {
-        el(container)
-          .querySelectorAll(
-            "button"
-          )
-          .forEach(
-            item =>
-              item.classList.remove(
-                "selected"
-              )
-          );
-
-        button.classList.add(
-          "selected"
-        );
-
-        clearPresetSelection();
-
-        refreshEditorTotal();
-      };
-    });
-}
-
-
-function resetSheetScroll(
-  sheetId
-) {
-  const sheet =
-    el(sheetId);
-
-  requestAnimationFrame(
-    () => {
-      sheet.scrollTop = 0;
-
-      requestAnimationFrame(
-        () => {
-          sheet.scrollTop = 0;
-        }
-      );
-    }
-  );
-}
-
-
-function openEditor(index) {
-  editingIndex =
-    index;
-
-  const day =
-    state.days[index];
-
-  el(
-    "editorWeek"
-  ).textContent =
-    `Week ${day.week}`;
-
-  el(
-    "editorDate"
-  ).textContent =
-    fmtDate(
-      day.date,
-      {
-        weekday: "long",
-        day: "numeric",
-        month: "long"
-      }
-    );
-
-  el(
-    "editorSheet"
-  ).classList.remove(
-    "hidden"
-  );
-
-  document.body.style.overflow =
-    "hidden";
-
-  el(
-    "offDayPanel"
-  ).classList.toggle(
-    "hidden",
-    !day.off
-  );
-
-  el(
-    "workDayPanel"
-  ).classList.toggle(
-    "hidden",
-    day.off
-  );
-
-  resetSheetScroll(
-    "editorPanel"
-  );
-
-  if (
-    day.off
-  ) {
-    return;
+  .date-button{
+    font-size:13px;
+    padding-left:7px;
+    padding-right:7px;
   }
 
-  renderOptionButtons(
-    "startButtons",
-    startOptions,
-    day.start || "07:30",
-    "time"
-  );
-
-  renderOptionButtons(
-    "finishButtons",
-    finishOptions,
-    day.finish || "16:30",
-    "time"
-  );
-
-  renderOptionButtons(
-    "breakButtons",
-    breakOptions,
-    day.break || 30,
-    "break"
-  );
-
-  bindChoiceButtons(
-    "startButtons"
-  );
-
-  bindChoiceButtons(
-    "finishButtons"
-  );
-
-  bindChoiceButtons(
-    "breakButtons"
-  );
-
-  el(
-    "dayNote"
-  ).value =
-    day.note || "";
-
-  clearPresetSelection();
-
-  for (
-    const [
-      key,
-      preset
-    ]
-    of Object.entries(
-      presets
-    )
-  ) {
-    if (
-      day.start ===
-        preset.start &&
-      day.finish ===
-        preset.finish &&
-      Number(day.break) ===
-        preset.break
-    ) {
-      document
-        .querySelector(
-          `.preset[data-preset="${key}"]`
-        )
-        ?.classList.add(
-          "selected"
-        );
-
-      break;
-    }
+  .date-row{
+    grid-template-columns:40px minmax(0,1fr) 40px;
+    gap:6px;
   }
 
-  refreshEditorTotal();
-}
+  .fortnight-nav{
+    max-width:300px;
+  }
 
+  .header-subtitle{
+    font-size:15px;
+  }
 
-function closeEditor() {
-  el(
-    "editorSheet"
-  ).classList.add(
-    "hidden"
-  );
+  .calendar-grid{
+    gap:6px;
+  }
 
-  document.body.style.overflow =
-    "";
+  .cal-cell{
+    min-height:82px;
+    padding:7px;
+  }
 
-  editingIndex =
-    null;
-}
+  .cal-cell .dow{
+    font-size:9px;
+  }
 
+  .cal-cell .date{
+    font-size:17px;
+  }
 
-function openManage() {
-  renderManageSummary();
+  .cal-cell .cal-hours{
+    left:7px;
+    bottom:7px;
+    font-size:10px;
+  }
 
-  el(
-    "manageSheet"
-  ).classList.remove(
-    "hidden"
-  );
-
-  document.body.style.overflow =
-    "hidden";
-}
-
-
-function closeManage() {
-  el(
-    "manageSheet"
-  ).classList.add(
-    "hidden"
-  );
-
-  document.body.style.overflow =
-    "";
-}
-
-
-function archiveCurrentFortnight() {
-  const history =
-    loadHistory();
-
-  const snapshot = {
-    start:
-      state.start,
-
-    offWeek:
-      state.offWeek,
-
-    days:
-      state.days,
-
-    archivedAt:
-      new Date().toISOString()
-  };
-
-  const alreadyExists =
-    history.some(
-      item =>
-        item.start ===
-        snapshot.start
-    );
-
-  if (
-    !alreadyExists
-  ) {
-    history.push(
-      snapshot
-    );
-
-    saveHistory(
-      history
-    );
+  .settings-grid strong{
+    font-size:14px;
   }
 }
 
-
-function startNextFortnight() {
-  archiveCurrentFortnight();
-
-  const newStart =
-    addDays(
-      state.start,
-      14
-    );
-
-  const newOffWeek =
-    state.offWeek === 1
-      ? 2
-      : 1;
-
-  state = {
-    configured: true,
-    start:
-      newStart,
-    offWeek:
-      newOffWeek,
-    days:
-      makeDays(
-        newStart,
-        newOffWeek
-      )
-  };
-
-  persist();
-
-  closeManage();
-
-  window.scrollTo(
-    {
-      top: 0,
-      behavior: "smooth"
-    }
-  );
-
-  renderShell();
-}
-
-
-/* =========================
-   SETUP CONTROLS
-========================= */
-
-document
-  .querySelectorAll(
-    ".choice-btn"
-  )
-  .forEach(button => {
-    button.onclick = () => {
-      state.offWeek =
-        Number(
-          button.dataset.off
-            .replace(
-              "week",
-              ""
-            )
-        );
-
-      renderSetupDates();
-    };
-  });
-
-
-el(
-  "prevMonday"
-).onclick =
-  () => {
-    state.start =
-      addDays(
-        state.start,
-        -7
-      );
-
-    renderSetupDates();
-  };
-
-
-el(
-  "nextMonday"
-).onclick =
-  () => {
-    state.start =
-      addDays(
-        state.start,
-        7
-      );
-
-    renderSetupDates();
-  };
-
-
-el(
-  "startDateButton"
-).onclick =
-  () => {
-    const picker =
-      el(
-        "startDateNative"
-      );
-
-    if (
-      typeof picker.showPicker ===
-      "function"
-    ) {
-      picker.showPicker();
-    }
-    else {
-      picker.click();
-    }
-  };
-
-
-el(
-  "startDateNative"
-).onchange =
-  event => {
-    const value =
-      event.target.value;
-
-    if (
-      !value
-    ) {
-      return;
-    }
-
-    state.start =
-      mondayOf(value);
-
-    renderSetupDates();
-  };
-
-
-el(
-  "createFortnightBtn"
-).onclick =
-  () => {
-    state.days =
-      makeDays(
-        state.start,
-        state.offWeek
-      );
-
-    state.configured =
-      true;
-
-    persist();
-
-    renderShell();
-  };
-
-
-/* =========================
-   SETTINGS / MANAGE
-========================= */
-
-el(
-  "settingsBtn"
-).onclick =
-  () => {
-    if (
-      state.configured
-    ) {
-      openManage();
-    }
-  };
-
-
-el(
-  "manageFortnightBtn"
-).onclick =
-  openManage;
-
-
-el(
-  "closeManage"
-).onclick =
-  closeManage;
-
-
-el(
-  "manageSheet"
-).onclick =
-  event => {
-    if (
-      event.target ===
-      el("manageSheet")
-    ) {
-      closeManage();
-    }
-  };
-
-
-el(
-  "startNextBtn"
-).onclick =
-  () => {
-    const confirmed =
-      confirm(
-        "Start the next fortnight? Your current fortnight will be saved in local history."
-      );
-
-    if (
-      confirmed
-    ) {
-      startNextFortnight();
-    }
-  };
-
-
-el(
-  "nextFortnightBtn"
-).onclick =
-  () => {
-    const confirmed =
-      confirm(
-        "Start the next fortnight? Your current fortnight will be saved in local history."
-      );
-
-    if (
-      confirmed
-    ) {
-      startNextFortnight();
-    }
-  };
-
-
-el(
-  "changeSetupBtn"
-).onclick =
-  () => {
-    const confirmed =
-      confirm(
-        "Change the current fortnight setup? Creating it again will reset the currently logged days."
-      );
-
-    if (
-      !confirmed
-    ) {
-      return;
-    }
-
-    closeManage();
-
-    state.configured =
-      false;
-
-    persist();
-
-    renderShell();
-  };
-
-
-/* =========================
-   DAY EDITOR
-========================= */
-
-el(
-  "closeEditor"
-).onclick =
-  closeEditor;
-
-
-el(
-  "closeOffDayBtn"
-).onclick =
-  closeEditor;
-
-
-el(
-  "editorSheet"
-).onclick =
-  event => {
-    if (
-      event.target ===
-      el("editorSheet")
-    ) {
-      closeEditor();
-    }
-  };
-
-
-document
-  .querySelectorAll(
-    ".preset"
-  )
-  .forEach(button => {
-    button.onclick = () => {
-      const preset =
-        presets[
-          button.dataset.preset
-        ];
-
-      clearPresetSelection();
-
-      button.classList.add(
-        "selected"
-      );
-
-      renderOptionButtons(
-        "startButtons",
-        startOptions,
-        preset.start,
-        "time"
-      );
-
-      renderOptionButtons(
-        "finishButtons",
-        finishOptions,
-        preset.finish,
-        "time"
-      );
-
-      renderOptionButtons(
-        "breakButtons",
-        breakOptions,
-        preset.break,
-        "break"
-      );
-
-      bindChoiceButtons(
-        "startButtons"
-      );
-
-      bindChoiceButtons(
-        "finishButtons"
-      );
-
-      bindChoiceButtons(
-        "breakButtons"
-      );
-
-      el(
-        "dayNote"
-      ).value =
-        preset.note;
-
-      refreshEditorTotal();
-    };
-  });
-
-
-el(
-  "dayNote"
-).oninput =
-  refreshEditorTotal;
-
-
-el(
-  "saveDayBtn"
-).onclick =
-  () => {
-    if (
-      editingIndex === null
-    ) {
-      return;
-    }
-
-    const value =
-      editorValue();
-
-    if (
-      !value.start ||
-      !value.finish ||
-      timeToMin(
-        value.finish
-      ) <=
-      timeToMin(
-        value.start
-      )
-    ) {
-      el(
-        "dayWarning"
-      ).textContent =
-        "Choose a valid start and finish time.";
-
-      el(
-        "dayWarning"
-      ).classList.remove(
-        "hidden"
-      );
-
-      return;
-    }
-
-    Object.assign(
-      state.days[
-        editingIndex
-      ],
-      value
-    );
-
-    persist();
-
-    closeEditor();
-
-    renderOverview();
-    renderCalendar();
-  };
-
-
-el(
-  "clearDayBtn"
-).onclick =
-  () => {
-    if (
-      editingIndex === null
-    ) {
-      return;
-    }
-
-    Object.assign(
-      state.days[
-        editingIndex
-      ],
-      {
-        start: "",
-        finish: "",
-        break: 30,
-        note: ""
-      }
-    );
-
-    persist();
-
-    closeEditor();
-
-    renderOverview();
-    renderCalendar();
-  };
-
-
-/* =========================
-   START APP
-========================= */
-
-renderShell();
-
-
-if (
-  "serviceWorker" in navigator
-) {
-  window.addEventListener(
-    "load",
-    () => {
-      navigator
-        .serviceWorker
-        .register(
-          "./sw.js"
-        )
-        .catch(
-          error =>
-            console.log(
-              "Service worker error:",
-              error
-            )
-        );
-    }
-  );
+@media(min-width:650px){
+
+  .metric-grid{
+    grid-template-columns:repeat(4,1fr);
+  }
+
+  .preset-grid{
+    grid-template-columns:repeat(5,1fr);
+  }
 }
