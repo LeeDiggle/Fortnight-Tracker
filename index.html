@@ -42,7 +42,7 @@
 
   <link
     rel="stylesheet"
-    href="./styles.css?v=4"
+    href="./styles.css?v=5"
   >
 </head>
 
@@ -130,9 +130,7 @@
 
     <!-- SETUP -->
 
-    <section
-      id="setupView"
-    >
+    <section id="setupView">
 
       <div class="hero-card">
 
@@ -141,6 +139,7 @@
         </div>
 
         <div>
+
           <h2>
             Choose your fortnight
           </h2>
@@ -148,8 +147,9 @@
           <p class="muted">
             Pick the Monday that starts Week 1,
             then choose which Friday is your
-            non-working day.
+            normal non-working day.
           </p>
+
         </div>
 
       </div>
@@ -198,7 +198,7 @@
 
 
         <label class="field-label gap-top">
-          Which Friday is off?
+          Normal Friday off
         </label>
 
         <div class="choice-grid">
@@ -208,6 +208,7 @@
             data-off="week1"
             type="button"
           >
+
             <span class="choice-title">
               Week 1 Friday
             </span>
@@ -217,6 +218,7 @@
               class="choice-date"
             >
             </span>
+
           </button>
 
 
@@ -225,6 +227,7 @@
             data-off="week2"
             type="button"
           >
+
             <span class="choice-title">
               Week 2 Friday
             </span>
@@ -234,6 +237,7 @@
               class="choice-date"
             >
             </span>
+
           </button>
 
         </div>
@@ -255,6 +259,7 @@
         <div class="mini-grid">
 
           <div>
+
             <span>
               Target
             </span>
@@ -262,9 +267,12 @@
             <strong>
               75h
             </strong>
+
           </div>
 
+
           <div>
+
             <span>
               Working days
             </span>
@@ -272,11 +280,14 @@
             <strong>
               9
             </strong>
+
           </div>
 
+
           <div>
+
             <span>
-              Day off
+              Normal day off
             </span>
 
             <strong
@@ -284,6 +295,7 @@
             >
               W2 Fri
             </strong>
+
           </div>
 
         </div>
@@ -316,6 +328,7 @@
         <div class="card-title-row">
 
           <div>
+
             <div class="section-label">
               Fortnight progress
             </div>
@@ -326,6 +339,7 @@
             >
               0h 00m of 75h
             </h2>
+
           </div>
 
           <div
@@ -352,54 +366,54 @@
         <div class="metric-grid">
 
           <div class="metric">
+
             <span>
               Worked
             </span>
 
-            <strong
-              id="workedMetric"
-            >
+            <strong id="workedMetric">
               0h 00m
             </strong>
+
           </div>
 
 
           <div class="metric">
+
             <span>
               Remaining
             </span>
 
-            <strong
-              id="remainingMetric"
-            >
+            <strong id="remainingMetric">
               75h 00m
             </strong>
+
           </div>
 
 
           <div class="metric">
+
             <span>
               Days left
             </span>
 
-            <strong
-              id="daysLeftMetric"
-            >
+            <strong id="daysLeftMetric">
               9
             </strong>
+
           </div>
 
 
           <div class="metric">
+
             <span>
               Avg needed
             </span>
 
-            <strong
-              id="avgMetric"
-            >
+            <strong id="avgMetric">
               8h 20m
             </strong>
+
           </div>
 
         </div>
@@ -425,7 +439,6 @@
         <h2>
           Tap a day to log or edit
         </h2>
-
 
         <div
           id="calendarGrid"
@@ -468,6 +481,7 @@
         <div class="settings-grid">
 
           <div>
+
             <span>
               Pattern
             </span>
@@ -477,12 +491,14 @@
             </strong>
 
             <small>
-              1 Friday off
+              1 day off
             </small>
+
           </div>
 
 
           <div>
+
             <span>
               Hours per fortnight
             </span>
@@ -490,10 +506,12 @@
             <strong>
               75 hours
             </strong>
+
           </div>
 
 
           <div>
+
             <span>
               Target average
             </span>
@@ -501,6 +519,7 @@
             <strong>
               8h 20m
             </strong>
+
           </div>
 
         </div>
@@ -577,9 +596,7 @@
             Week 1
           </div>
 
-          <h2
-            id="editorDate"
-          >
+          <h2 id="editorDate">
           </h2>
 
         </div>
@@ -601,8 +618,8 @@
         </h2>
 
         <p class="muted">
-          This Friday is your scheduled
-          day off.
+          This is the scheduled non-working
+          day for this fortnight.
         </p>
 
         <button
@@ -616,9 +633,7 @@
       </div>
 
 
-      <div
-        id="workDayPanel"
-      >
+      <div id="workDayPanel">
 
         <div class="section-label">
           Quick presets
@@ -632,9 +647,11 @@
             data-preset="monday"
             type="button"
           >
+
             <strong>Mon gym</strong>
             <span>07:30–15:30</span>
             <small>7h 30m</small>
+
           </button>
 
 
@@ -643,9 +660,11 @@
             data-preset="office"
             type="button"
           >
+
             <strong>Office</strong>
             <span>07:30–16:30</span>
             <small>8h 30m</small>
+
           </button>
 
 
@@ -654,9 +673,11 @@
             data-preset="cycle"
             type="button"
           >
+
             <strong>Cycle</strong>
             <span>07:30–16:00</span>
             <small>8h 00m</small>
+
           </button>
 
 
@@ -665,9 +686,11 @@
             data-preset="wfhLong"
             type="button"
           >
+
             <strong>WFH long</strong>
             <span>07:00–16:30</span>
             <small>9h 00m</small>
+
           </button>
 
 
@@ -676,9 +699,11 @@
             data-preset="wfhGym"
             type="button"
           >
+
             <strong>WFH + gym</strong>
             <span>07:00–16:30</span>
             <small>8h 00m</small>
+
           </button>
 
         </div>
@@ -728,9 +753,7 @@
             Paid hours for this day
           </span>
 
-          <strong
-            id="editorPaid"
-          >
+          <strong id="editorPaid">
             0h 00m
           </strong>
 
@@ -741,11 +764,15 @@
           class="field-label gap-top"
           for="dayNote"
         >
+
           Note
+
           <span class="muted">
             (optional)
           </span>
+
         </label>
+
 
         <input
           id="dayNote"
@@ -829,23 +856,26 @@
 
       <div class="manage-summary-card">
 
-        <span
-          id="manageType"
-        >
+        <span id="manageType">
           Current fortnight
         </span>
 
-        <strong
-          id="manageRange"
-        >
+        <strong id="manageRange">
         </strong>
 
-        <small
-          id="manageDayOff"
-        >
+        <small id="manageDayOff">
         </small>
 
       </div>
+
+
+      <button
+        id="changeNwdBtn"
+        class="secondary-btn"
+        type="button"
+      >
+        Change non-working day
+      </button>
 
 
       <button
@@ -859,19 +889,10 @@
 
       <button
         id="returnCurrentManageBtn"
-        class="primary-btn hidden"
+        class="secondary-btn hidden"
         type="button"
       >
         Return to current fortnight
-      </button>
-
-
-      <button
-        id="changeSetupBtn"
-        class="secondary-btn"
-        type="button"
-      >
-        Change current setup
       </button>
 
     </section>
@@ -879,7 +900,94 @@
   </div>
 
 
-  <script src="./app.js?v=4"></script>
+  <!-- CHANGE NON-WORKING DAY -->
+
+  <div
+    id="nwdSheet"
+    class="sheet-backdrop hidden"
+  >
+
+    <section
+      id="nwdPanel"
+      class="sheet"
+    >
+
+      <div class="sheet-handle"></div>
+
+
+      <header class="sheet-header">
+
+        <button
+          id="closeNwd"
+          class="back-btn"
+          type="button"
+        >
+          ‹ Back
+        </button>
+
+
+        <div class="sheet-title">
+
+          <div class="section-label">
+            Fortnight
+          </div>
+
+          <h2>
+            Non-working day
+          </h2>
+
+        </div>
+
+      </header>
+
+
+      <div class="nwd-intro">
+
+        <p>
+          Choose the non-working day for this
+          fortnight only.
+        </p>
+
+        <p class="muted">
+          Future fortnights will continue to
+          follow your normal Friday pattern.
+        </p>
+
+      </div>
+
+
+      <div
+        id="nwdGrid"
+        class="nwd-grid"
+      >
+      </div>
+
+
+      <div
+        id="nwdWarning"
+        class="nwd-warning hidden"
+      >
+        This day already has hours logged.
+        They will be kept, but excluded from
+        the fortnight total while this day
+        is marked as non-working.
+      </div>
+
+
+      <button
+        id="saveNwdBtn"
+        class="primary-btn"
+        type="button"
+      >
+        Save non-working day
+      </button>
+
+    </section>
+
+  </div>
+
+
+  <script src="./app.js?v=5"></script>
 
 </body>
 </html>
