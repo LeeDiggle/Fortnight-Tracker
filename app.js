@@ -328,10 +328,7 @@ function loadCurrent() {
     "fortnightTracker.v1"
   ];
 
-  for (
-    const key
-    of keys
-  ) {
+  for (const key of keys) {
     try {
       const raw =
         localStorage.getItem(
@@ -357,7 +354,7 @@ function loadCurrent() {
       }
     }
     catch (error) {
-      // Try the next saved version.
+      // Try next stored version.
     }
   }
 
@@ -412,9 +409,6 @@ let currentState =
 
 let history =
   loadHistory();
-
-let viewedStart =
-  currentState.start;
 
 let editingIndex =
   null;
@@ -522,7 +516,7 @@ repairLegacyRollover();
 
 
 /* =========================
-   VIEWING HISTORY
+   FORTNIGHT COLLECTION
 ========================= */
 
 function allFortnights() {
@@ -536,9 +530,7 @@ function allFortnights() {
       .map(
         item => ({
           start:
-            item.start,
-          isCurrent:
-            false
+            item.start
         })
       );
 
@@ -547,9 +539,7 @@ function allFortnights() {
   ) {
     items.push({
       start:
-        currentState.start,
-      isCurrent:
-        true
+        currentState.start
     });
   }
 
@@ -564,9 +554,9 @@ function allFortnights() {
   );
 }
 
-function getViewedFortnight() {
+function getFortnightByStart(start) {
   if (
-    viewedStart ===
+    start ===
     currentState.start
   ) {
     return currentState;
@@ -576,16 +566,128 @@ function getViewedFortnight() {
     history.find(
       item =>
         item.start ===
-        viewedStart
+        start
+    ) ||
+    null
+  );
+}
+
+function getLatestScheduledStart() {
+  const items =
+    allFortnights();
+
+  if (
+    items.length === 0
+  ) {
+    return currentState.start;
+  }
+
+  return items[
+    items.length - 1
+  ].start;
+}
+
+function getDateCurrentStart() {
+  const today =
+    localISO(
+      new Date()
+    );
+
+  const items =
+    allFortnights();
+
+  const current =
+    items.find(
+      item =>
+        today >=
+          item.start &&
+        today <=
+          addDays(
+            item.start,
+            13
+          )
+    );
+
+  if (current) {
+    return current.start;
+  }
+
+  const upcoming =
+    items.find(
+      item =>
+        item.start >
+        today
+    );
+
+  if (upcoming) {
+    return upcoming.start;
+  }
+
+  if (
+    items.length > 0
+  ) {
+    return items[
+      items.length - 1
+    ].start;
+  }
+
+  return currentState.start;
+}
+
+let viewedStart =
+  getDateCurrentStart();
+
+function getViewedFortnight() {
+  return (
+    getFortnightByStart(
+      viewedStart
     ) ||
     currentState
   );
 }
 
-function viewingCurrent() {
+function getFortnightRelation(
+  fortnight
+) {
+  const today =
+    localISO(
+      new Date()
+    );
+
+  const end =
+    addDays(
+      fortnight.start,
+      13
+    );
+
+  if (
+    today <
+    fortnight.start
+  ) {
+    return "upcoming";
+  }
+
+  if (
+    today >
+    end
+  ) {
+    return "past";
+  }
+
+  return "current";
+}
+
+function viewingDateCurrent() {
   return (
     viewedStart ===
-    currentState.start
+    getDateCurrentStart()
+  );
+}
+
+function viewingLatestScheduled() {
+  return (
+    viewedStart ===
+    getLatestScheduledStart()
   );
 }
 
@@ -739,6 +841,11 @@ function renderFortnightNav() {
   const viewed =
     getViewedFortnight();
 
+  const relation =
+    getFortnightRelation(
+      viewed
+    );
+
   el(
     "fortnightRange"
   ).textContent =
@@ -769,18 +876,37 @@ function renderFortnightNav() {
       )
     }`;
 
-  el(
-    "pastBadge"
-  ).classList.toggle(
-    "hidden",
-    viewingCurrent()
-  );
+  const badge =
+    el(
+      "pastBadge"
+    );
+
+  if (
+    relation ===
+    "current"
+  ) {
+    badge.classList.add(
+      "hidden"
+    );
+  }
+
+  else {
+    badge.classList.remove(
+      "hidden"
+    );
+
+    badge.textContent =
+      relation ===
+      "past"
+        ? "Past fortnight"
+        : "Upcoming fortnight";
+  }
 
   el(
     "returnCurrentBtn"
   ).classList.toggle(
     "hidden",
-    viewingCurrent()
+    viewingDateCurrent()
   );
 
   const items =
@@ -1093,31 +1219,40 @@ function renderOverview() {
     }
   }
 
-  const end =
-    parseISO(
-      addDays(
-        currentState.start,
-        13
-      )
+  const latest =
+    getFortnightByStart(
+      getLatestScheduledStart()
     );
 
+  const latestEnd =
+    latest
+      ? parseISO(
+          addDays(
+            latest.start,
+            13
+          )
+        )
+      : null;
+
   const finished =
-    new Date() >
-    new Date(
-      end.getFullYear(),
-      end.getMonth(),
-      end.getDate(),
-      23,
-      59,
-      59
-    );
+    latestEnd
+      ? new Date() >
+        new Date(
+          latestEnd.getFullYear(),
+          latestEnd.getMonth(),
+          latestEnd.getDate(),
+          23,
+          59,
+          59
+        )
+      : false;
 
   el(
     "nextFortnightBtn"
   ).classList.toggle(
     "hidden",
     !(
-      viewingCurrent() &&
+      viewingLatestScheduled() &&
       finished
     )
   );
@@ -1245,18 +1380,43 @@ function renderManageSummary() {
   const viewed =
     getViewedFortnight();
 
+  const relation =
+    getFortnightRelation(
+      viewed
+    );
+
   const end =
     addDays(
       viewed.start,
       13
     );
 
-  el(
-    "manageType"
-  ).textContent =
-    viewingCurrent()
-      ? "Current fortnight"
-      : "Past fortnight";
+  if (
+    relation ===
+    "current"
+  ) {
+    el(
+      "manageType"
+    ).textContent =
+      "Current fortnight";
+  }
+
+  else if (
+    relation ===
+    "past"
+  ) {
+    el(
+      "manageType"
+    ).textContent =
+      "Past fortnight";
+  }
+
+  else {
+    el(
+      "manageType"
+    ).textContent =
+      "Upcoming fortnight";
+  }
 
   el(
     "manageRange"
@@ -1315,25 +1475,36 @@ function renderManageSummary() {
       )
     }`;
 
+  /*
+    A new fortnight is always
+    created from the furthest
+    scheduled fortnight.
+  */
   el(
     "startNextBtn"
   ).classList.toggle(
     "hidden",
-    !viewingCurrent()
+    !viewingLatestScheduled()
   );
 
+  /*
+    Setup changes are limited
+    to the furthest scheduled
+    fortnight so older records
+    cannot accidentally be reset.
+  */
   el(
     "changeSetupBtn"
   ).classList.toggle(
     "hidden",
-    !viewingCurrent()
+    !viewingLatestScheduled()
   );
 
   el(
     "returnCurrentManageBtn"
   ).classList.toggle(
     "hidden",
-    viewingCurrent()
+    viewingDateCurrent()
   );
 }
 
@@ -1455,6 +1626,10 @@ function archiveCurrentFortnight() {
 }
 
 function startNextFortnight() {
+  /*
+    currentState is always the
+    furthest-created fortnight.
+  */
   archiveCurrentFortnight();
 
   const newStart =
@@ -1482,6 +1657,11 @@ function startNextFortnight() {
       )
   };
 
+  /*
+    When deliberately creating
+    another future period, show
+    the new one immediately.
+  */
   viewedStart =
     newStart;
 
@@ -1499,7 +1679,7 @@ function startNextFortnight() {
 
 function returnToCurrent() {
   viewedStart =
-    currentState.start;
+    getDateCurrentStart();
 
   closeManage();
 
@@ -1913,7 +2093,7 @@ function closeEditor() {
 function confirmStartNext() {
   const confirmed =
     confirm(
-      "Start the next fortnight? Your current fortnight will remain available in your history."
+      "Start the next fortnight? Existing fortnights will remain available."
     );
 
   if (
@@ -2157,14 +2337,14 @@ function bindEvents() {
     "click",
     () => {
       if (
-        !viewingCurrent()
+        !viewingLatestScheduled()
       ) {
         return;
       }
 
       const confirmed =
         confirm(
-          "Change the current fortnight setup? Creating it again will reset the currently logged days in this fortnight."
+          "Change the latest scheduled fortnight setup? Creating it again will reset the logged days in that fortnight."
         );
 
       if (
@@ -2179,6 +2359,7 @@ function bindEvents() {
         false;
 
       persistCurrent();
+
       renderShell();
     }
   );
