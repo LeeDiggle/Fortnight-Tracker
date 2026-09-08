@@ -42,7 +42,7 @@
 
   <link
     rel="stylesheet"
-    href="./styles.css?v=5"
+    href="./styles.css?v=6"
   >
 </head>
 
@@ -115,15 +115,6 @@
         </div>
 
       </div>
-
-      <button
-        id="settingsBtn"
-        class="icon-btn"
-        aria-label="Settings"
-        type="button"
-      >
-        ⚙︎
-      </button>
 
     </header>
 
@@ -368,19 +359,6 @@
           <div class="metric">
 
             <span>
-              Worked
-            </span>
-
-            <strong id="workedMetric">
-              0h 00m
-            </strong>
-
-          </div>
-
-
-          <div class="metric">
-
-            <span>
               Remaining
             </span>
 
@@ -469,92 +447,91 @@
       </section>
 
 
-      <!-- SETTINGS -->
+      <!-- FORTNIGHT ACTIONS -->
 
-      <section class="card fortnight-settings">
+      <section class="card fortnight-actions">
 
-        <div class="section-label">
-          Fortnight settings
-        </div>
-
-
-        <div class="settings-grid">
+        <div class="action-card-header">
 
           <div>
 
-            <span>
-              Pattern
-            </span>
+            <div
+              id="actionFortnightType"
+              class="section-label"
+            >
+              Fortnight
+            </div>
 
-            <strong>
-              9 working days
-            </strong>
-
-            <small>
-              1 day off
-            </small>
-
-          </div>
-
-
-          <div>
-
-            <span>
-              Hours per fortnight
-            </span>
-
-            <strong>
-              75 hours
-            </strong>
+            <h2>
+              Non-working day
+            </h2>
 
           </div>
 
-
-          <div>
-
-            <span>
-              Target average
-            </span>
-
-            <strong>
-              8h 20m
-            </strong>
-
-          </div>
+          <strong
+            id="actionNwdDate"
+            class="action-nwd-date"
+          >
+          </strong>
 
         </div>
 
 
-        <button
-          id="manageFortnightBtn"
-          class="manage-btn"
-          type="button"
-        >
+        <div class="action-buttons">
 
-          <span class="manage-icon">
-            ◫
-          </span>
+          <button
+            id="changeNwdBtn"
+            class="action-row"
+            type="button"
+          >
 
-          <span>
-            Manage fortnight
-          </span>
+            <span>
+              Change non-working day
+            </span>
 
-          <span class="manage-arrow">
-            ›
-          </span>
+            <span class="action-arrow">
+              ›
+            </span>
 
-        </button>
+          </button>
+
+
+          <button
+            id="startNextBtn"
+            class="action-row hidden"
+            type="button"
+          >
+
+            <span>
+              Start next fortnight
+            </span>
+
+            <span class="action-arrow">
+              ›
+            </span>
+
+          </button>
+
+
+          <button
+            id="returnCurrentActionBtn"
+            class="action-row hidden"
+            type="button"
+          >
+
+            <span>
+              Return to current fortnight
+            </span>
+
+            <span class="action-arrow">
+              ›
+            </span>
+
+          </button>
+
+        </div>
 
       </section>
-
-
-      <button
-        id="nextFortnightBtn"
-        class="secondary-action hidden"
-        type="button"
-      >
-        Start next fortnight
-      </button>
 
     </section>
 
@@ -813,93 +790,6 @@
   </div>
 
 
-  <!-- MANAGE FORTNIGHT -->
-
-  <div
-    id="manageSheet"
-    class="sheet-backdrop hidden"
-  >
-
-    <section
-      id="managePanel"
-      class="sheet"
-    >
-
-      <div class="sheet-handle"></div>
-
-
-      <header class="sheet-header">
-
-        <button
-          id="closeManage"
-          class="back-btn"
-          type="button"
-        >
-          ‹ Back
-        </button>
-
-
-        <div class="sheet-title">
-
-          <div class="section-label">
-            Fortnight
-          </div>
-
-          <h2>
-            Manage
-          </h2>
-
-        </div>
-
-      </header>
-
-
-      <div class="manage-summary-card">
-
-        <span id="manageType">
-          Current fortnight
-        </span>
-
-        <strong id="manageRange">
-        </strong>
-
-        <small id="manageDayOff">
-        </small>
-
-      </div>
-
-
-      <button
-        id="changeNwdBtn"
-        class="secondary-btn"
-        type="button"
-      >
-        Change non-working day
-      </button>
-
-
-      <button
-        id="startNextBtn"
-        class="primary-btn"
-        type="button"
-      >
-        Start next fortnight
-      </button>
-
-
-      <button
-        id="returnCurrentManageBtn"
-        class="secondary-btn hidden"
-        type="button"
-      >
-        Return to current fortnight
-      </button>
-
-    </section>
-
-  </div>
-
-
   <!-- CHANGE NON-WORKING DAY -->
 
   <div
@@ -987,7 +877,7 @@
   </div>
 
 
-  <script src="./app.js?v=5"></script>
+  <script src="./app.js?v=6"></script>
 
 </body>
 </html>
