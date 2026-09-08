@@ -766,21 +766,26 @@ h3{
 
 .time-selector-row{
   width:100%;
-  min-height:52px;
-  border:0;
-  border-bottom:1px solid var(--line);
-  background:transparent;
+  min-height:54px;
+  border:1px solid var(--line);
+  background:var(--panel2);
   color:var(--text);
-  padding:0;
+  padding:0 12px;
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap:14px;
   text-align:left;
+  border-radius:13px;
+  margin-top:8px;
 }
 
-.time-selector-row:first-of-type{
-  margin-top:4px;
+.time-selector-row + .time-selector-row{
+  margin-top:8px;
+}
+
+.time-selector-row:active{
+  background:#272c34;
 }
 
 .time-selector-label{
@@ -837,13 +842,18 @@ h3{
 }
 
 .picker-close{
-  border:0;
-  background:transparent;
+  min-height:34px;
+  padding:0 12px;
+  border:1px solid rgba(255,134,20,.45);
+  border-radius:9px;
+  background:rgba(255,134,20,.10);
   color:var(--orange);
-  min-height:36px;
-  padding:0 2px;
-  font-size:13px;
-  font-weight:800;
+  font-size:12px;
+  font-weight:850;
+}
+
+.picker-close:active{
+  background:rgba(255,134,20,.18);
 }
 
 .time-picker-grid{
@@ -872,17 +882,21 @@ h3{
   display:grid;
   grid-template-columns:1fr 1fr;
   gap:7px;
-  margin-top:8px;
+  margin-top:9px;
 }
 
 .range-btn{
-  min-height:38px;
-  border:1px solid var(--line);
+  min-height:40px;
+  border:1px solid #434a55;
   border-radius:10px;
-  background:transparent;
-  color:var(--muted);
+  background:var(--panel2);
+  color:#d9dde3;
   font-size:12px;
-  font-weight:750;
+  font-weight:800;
+}
+
+.range-btn:active{
+  background:#2a3038;
 }
 
 .range-btn:disabled{
