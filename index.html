@@ -42,7 +42,7 @@
 
   <link
     rel="stylesheet"
-    href="./styles.css?v=6"
+    href="./styles.css?v=8"
   >
 </head>
 
@@ -581,6 +581,8 @@
       </header>
 
 
+      <!-- OFF DAY -->
+
       <div
         id="offDayPanel"
         class="off-panel hidden"
@@ -610,124 +612,270 @@
       </div>
 
 
+      <!-- WORKING DAY -->
+
       <div id="workDayPanel">
 
-        <div class="section-label">
-          Quick presets
+
+        <!-- QUICK DAYS -->
+
+        <div class="editor-section">
+
+          <div class="section-label">
+            Quick days
+          </div>
+
+          <div class="quick-preset-row">
+
+            <button
+              class="quick-preset"
+              data-preset="monday"
+              type="button"
+            >
+              Mon gym
+            </button>
+
+            <button
+              class="quick-preset"
+              data-preset="office"
+              type="button"
+            >
+              Office
+            </button>
+
+            <button
+              class="quick-preset"
+              data-preset="cycle"
+              type="button"
+            >
+              Cycle
+            </button>
+
+            <button
+              class="quick-preset"
+              data-preset="wfhLong"
+              type="button"
+            >
+              WFH long
+            </button>
+
+            <button
+              class="quick-preset"
+              data-preset="wfhGym"
+              type="button"
+            >
+              WFH + gym
+            </button>
+
+          </div>
+
         </div>
 
 
-        <div class="preset-grid">
+        <!-- TIMES -->
+
+        <div class="editor-section time-entry-section">
+
+          <div class="section-label">
+            Time
+          </div>
+
 
           <button
-            class="preset"
-            data-preset="monday"
+            id="startTimeRow"
+            class="time-selector-row"
             type="button"
           >
 
-            <strong>Mon gym</strong>
-            <span>07:30–15:30</span>
-            <small>7h 30m</small>
+            <span class="time-selector-label">
+              Start
+            </span>
+
+            <span class="time-selector-right">
+
+              <strong id="startTimeValue">
+                07:30
+              </strong>
+
+              <span class="time-selector-arrow">
+                ›
+              </span>
+
+            </span>
 
           </button>
 
 
+          <div
+            id="startTimePicker"
+            class="time-picker-panel hidden"
+          >
+
+            <div class="time-picker-head">
+
+              <div>
+
+                <strong>
+                  Start time
+                </strong>
+
+                <span id="startTimeRange">
+                  06:00–10:00
+                </span>
+
+              </div>
+
+              <button
+                id="closeStartTimePicker"
+                class="picker-close"
+                type="button"
+              >
+                Done
+              </button>
+
+            </div>
+
+
+            <div
+              id="startButtons"
+              class="time-picker-grid"
+            >
+            </div>
+
+
+            <div class="time-picker-expand">
+
+              <button
+                id="earlierStartBtn"
+                class="range-btn"
+                type="button"
+              >
+                Earlier
+              </button>
+
+              <button
+                id="laterStartBtn"
+                class="range-btn"
+                type="button"
+              >
+                Later
+              </button>
+
+            </div>
+
+          </div>
+
+
           <button
-            class="preset"
-            data-preset="office"
+            id="finishTimeRow"
+            class="time-selector-row"
             type="button"
           >
 
-            <strong>Office</strong>
-            <span>07:30–16:30</span>
-            <small>8h 30m</small>
+            <span class="time-selector-label">
+              Finish
+            </span>
+
+            <span class="time-selector-right">
+
+              <strong id="finishTimeValue">
+                16:30
+              </strong>
+
+              <span class="time-selector-arrow">
+                ›
+              </span>
+
+            </span>
 
           </button>
 
 
-          <button
-            class="preset"
-            data-preset="cycle"
-            type="button"
+          <div
+            id="finishTimePicker"
+            class="time-picker-panel hidden"
           >
 
-            <strong>Cycle</strong>
-            <span>07:30–16:00</span>
-            <small>8h 00m</small>
+            <div class="time-picker-head">
 
-          </button>
+              <div>
+
+                <strong>
+                  Finish time
+                </strong>
+
+                <span id="finishTimeRange">
+                  15:00–18:00
+                </span>
+
+              </div>
+
+              <button
+                id="closeFinishTimePicker"
+                class="picker-close"
+                type="button"
+              >
+                Done
+              </button>
+
+            </div>
 
 
-          <button
-            class="preset"
-            data-preset="wfhLong"
-            type="button"
+            <div
+              id="finishButtons"
+              class="time-picker-grid"
+            >
+            </div>
+
+
+            <div class="time-picker-expand">
+
+              <button
+                id="earlierFinishBtn"
+                class="range-btn"
+                type="button"
+              >
+                Earlier
+              </button>
+
+              <button
+                id="laterFinishBtn"
+                class="range-btn"
+                type="button"
+              >
+                Later
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <!-- BREAK -->
+
+        <div class="editor-section">
+
+          <div class="section-label">
+            Break
+          </div>
+
+          <div
+            id="breakButtons"
+            class="break-grid"
           >
-
-            <strong>WFH long</strong>
-            <span>07:00–16:30</span>
-            <small>9h 00m</small>
-
-          </button>
-
-
-          <button
-            class="preset"
-            data-preset="wfhGym"
-            type="button"
-          >
-
-            <strong>WFH + gym</strong>
-            <span>07:00–16:30</span>
-            <small>8h 00m</small>
-
-          </button>
+          </div>
 
         </div>
 
 
-        <div class="divider">
-          or set your own
-        </div>
+        <!-- PAID TIME -->
 
-
-        <div class="section-label">
-          Start time
-        </div>
-
-        <div
-          id="startButtons"
-          class="time-grid"
-        >
-        </div>
-
-
-        <div class="section-label">
-          Finish time
-        </div>
-
-        <div
-          id="finishButtons"
-          class="time-grid"
-        >
-        </div>
-
-
-        <div class="section-label">
-          Break
-        </div>
-
-        <div
-          id="breakButtons"
-          class="break-grid"
-        >
-        </div>
-
-
-        <div class="summary-card">
+        <div class="summary-card paid-summary">
 
           <span>
-            Paid hours for this day
+            Paid time
           </span>
 
           <strong id="editorPaid">
@@ -736,6 +884,8 @@
 
         </div>
 
+
+        <!-- NOTE -->
 
         <label
           class="field-label gap-top"
@@ -765,6 +915,8 @@
         >
         </div>
 
+
+        <!-- SAVE -->
 
         <button
           id="saveDayBtn"
@@ -877,7 +1029,7 @@
   </div>
 
 
-  <script src="./app.js?v=6"></script>
+  <script src="./app.js?v=8"></script>
 
 </body>
 </html>
