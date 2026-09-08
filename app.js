@@ -248,6 +248,28 @@ function fmtHM(minutes) {
   return `${hours}h ${pad(mins)}m`;
 }
 
+function fmtCompactHM(minutes) {
+  const total =
+    Math.max(
+      0,
+      Math.round(minutes)
+    );
+
+  const hours =
+    Math.floor(
+      total / 60
+    );
+
+  const mins =
+    total % 60;
+
+  if (mins === 0) {
+    return `${hours}h`;
+  }
+
+  return `${hours}h ${mins}m`;
+}
+
 
 /* =========================
    FORTNIGHT DATA
@@ -1237,24 +1259,40 @@ function renderCalendar() {
                 }
               );
 
-          let hoursText =
+          let hoursContent =
             "—";
 
           if (
             day.off
           ) {
-            hoursText =
+            if (
               rawPaid > 0
-                ? `OFF · ${fmtHM(
-                    rawPaid
-                  )} saved`
-                : "OFF";
+            ) {
+              hoursContent =
+                `
+                  <span class="cal-off-main">
+                    OFF
+                  </span>
+                  <span class="cal-off-saved">
+                    ${fmtCompactHM(rawPaid)} saved
+                  </span>
+                `;
+            }
+
+            else {
+              hoursContent =
+                `
+                  <span class="cal-off-main">
+                    OFF
+                  </span>
+                `;
+            }
           }
 
           else if (
             paid > 0
           ) {
-            hoursText =
+            hoursContent =
               fmtHM(
                 paid
               );
@@ -1294,7 +1332,7 @@ function renderCalendar() {
               </div>
 
               <div class="cal-hours">
-                ${hoursText}
+                ${hoursContent}
               </div>
 
             </button>
