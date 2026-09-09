@@ -3,7 +3,19 @@ const TARGET = 75 * 60;
 const CURRENT_KEY = "fortnightTracker.v3";
 const HISTORY_KEY = "fortnightTracker.history.v1";
 
+const LEGACY_CURRENT_KEYS = [
+  "fortnightTracker.v4",
+  "fortnightTracker.v2",
+  "fortnightTracker.v1"
+];
+
+
+/* =========================
+   PRESETS
+========================= */
+
 const presets = {
+
   monday: {
     start: "07:30",
     finish: "15:30",
@@ -38,7 +50,9 @@ const presets = {
     break: 90,
     note: "WFH + gym"
   }
+
 };
+
 
 const breakOptions = [
   30,
@@ -48,27 +62,33 @@ const breakOptions = [
   90
 ];
 
+
 const defaultStartRange = {
   min: 6 * 60,
   max: 10 * 60
 };
+
 
 const defaultFinishRange = {
   min: 15 * 60,
   max: 18 * 60
 };
 
+
 const ABSOLUTE_MIN_TIME = 0;
-const ABSOLUTE_MAX_TIME = 23 * 60 + 45;
+const ABSOLUTE_MAX_TIME = (23 * 60) + 45;
 const RANGE_STEP = 60;
+
 
 let startRange = {
   ...defaultStartRange
 };
 
+
 let finishRange = {
   ...defaultFinishRange
 };
+
 
 let editorStart = "07:30";
 let editorFinish = "16:30";
@@ -76,16 +96,18 @@ let editorBreak = 30;
 
 
 /* =========================
-   HELPERS
+   BASIC HELPERS
 ========================= */
 
 function el(id) {
   return document.getElementById(id);
 }
 
+
 function pad(value) {
   return String(value).padStart(2, "0");
 }
+
 
 function clone(value) {
   return JSON.parse(
@@ -95,91 +117,148 @@ function clone(value) {
 
 
 /* =========================
-   DATES
+   DATE HELPERS
 ========================= */
 
 function localISO(date) {
-  return `${date.getFullYear()}-${pad(
-    date.getMonth() + 1
-  )}-${pad(date.getDate())}`;
+
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate())
+  ].join("-");
+
 }
 
+
 function parseISO(value) {
-  if (!value) {
-    return new Date();
-  }
 
-  const parts =
-    value
-      .split("-")
-      .map(Number);
-
-  if (
-    parts.length !== 3 ||
-    parts.some(Number.isNaN)
-  ) {
-    return new Date();
-  }
+  const [
+    year,
+    month,
+    day
+  ] = value.split("-").map(Number);
 
   return new Date(
-    parts[0],
-    parts[1] - 1,
-    parts[2],
+    year,
+    month - 1,
+    day,
     12,
+    0,
     0,
     0
   );
+
 }
 
-function addDays(
-  value,
-  amount
-) {
-  const date =
-    parseISO(value);
+
+function addDays(value, amount) {
+
+  const date = parseISO(value);
 
   date.setDate(
-    date.getDate() +
-    amount
+    date.getDate() + amount
   );
 
   return localISO(date);
+
 }
+
 
 function mondayOf(value) {
-  const date =
-    value instanceof Date
-      ? new Date(value)
-      : parseISO(value);
 
-  const weekday =
-    date.getDay();
+  const date = parseISO(value);
+
+  const day = date.getDay();
+
+  const distance =
+    day === 0
+      ? -6
+      : 1 - day;
 
   date.setDate(
-    date.getDate() +
-    (
-      weekday === 0
-        ? -6
-        : 1 - weekday
-    )
+    date.getDate() + distance
   );
 
   return localISO(date);
+
 }
 
-function fmtDate(
-  value,
-  options
-) {
-  return parseISO(value)
-    .toLocaleDateString(
-      "en-GB",
-      options || {
-        weekday: "short",
+
+function fmtDate(value, options = {}) {
+
+  return new Intl.DateTimeFormat(
+    "en-GB",
+    options
+  ).format(
+    parseISO(value)
+  );
+
+}
+
+
+function fortnightRangeText(start) {
+
+  const end = addDays(
+    start,
+    13
+  );
+
+  const startDate = parseISO(start);
+  const endDate = parseISO(end);
+
+  const sameMonth =
+    startDate.getMonth() === endDate.getMonth() &&
+    startDate.getFullYear() === endDate.getFullYear();
+
+  const sameYear =
+    startDate.getFullYear() === endDate.getFullYear();
+
+
+  if (sameMonth) {
+
+    return (
+      `${startDate.getDate()}–` +
+      `${endDate.getDate()} ` +
+      `${new Intl.DateTimeFormat("en-GB", {
+        month: "short",
+        year: "numeric"
+      }).format(endDate)}`
+    );
+
+  }
+
+
+  if (sameYear) {
+
+    return (
+      `${new Intl.DateTimeFormat("en-GB", {
         day: "numeric",
         month: "short"
-      }
+      }).format(startDate)} – ` +
+      `${new Intl.DateTimeFormat("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+      }).format(endDate)}`
     );
+
+  }
+
+
+  return (
+    `${new Intl.DateTimeFormat("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    }).format(startDate)} – ` +
+    `${new Intl.DateTimeFormat("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    }).format(endDate)}`
+  );
+
 }
 
 
@@ -188,19 +267,15 @@ function fmtDate(
 ========================= */
 
 function timeToMin(value) {
+
   if (!value) {
     return null;
   }
 
   const parts =
-    value
-      .split(":")
-      .map(Number);
+    value.split(":").map(Number);
 
-  if (
-    parts.length !== 2 ||
-    parts.some(Number.isNaN)
-  ) {
+  if (parts.length !== 2) {
     return null;
   }
 
@@ -208,174 +283,187 @@ function timeToMin(value) {
     parts[0] * 60 +
     parts[1]
   );
+
 }
 
+
 function minToTime(minutes) {
-  const safe =
+
+  let value =
     Math.max(
       ABSOLUTE_MIN_TIME,
       Math.min(
         ABSOLUTE_MAX_TIME,
-        Math.round(
-          minutes / 15
-        ) * 15
+        minutes
       )
     );
 
-  const hours =
-    Math.floor(
-      safe / 60
-    );
+  value =
+    Math.round(value / 15) * 15;
 
-  const mins =
-    safe % 60;
+  const hour =
+    Math.floor(value / 60);
 
-  return `${pad(hours)}:${pad(mins)}`;
+  const minute =
+    value % 60;
+
+  return (
+    `${pad(hour)}:${pad(minute)}`
+  );
+
 }
+
 
 function buildTimeOptions(
   min,
   max
 ) {
-  const options = [];
+
+  const values = [];
 
   for (
     let value = min;
     value <= max;
     value += 15
   ) {
-    options.push(
+
+    values.push(
       minToTime(value)
     );
+
   }
 
-  return options;
+  return values;
+
 }
+
 
 function ensureTimeInRange(
   value,
   range
 ) {
+
   const minutes =
     timeToMin(value);
 
-  if (
-    minutes === null
-  ) {
+  if (minutes === null) {
     return;
   }
 
-  if (
-    minutes < range.min
+
+  while (
+    minutes < range.min &&
+    range.min > ABSOLUTE_MIN_TIME
   ) {
+
     range.min =
       Math.max(
         ABSOLUTE_MIN_TIME,
-        Math.floor(
-          minutes / RANGE_STEP
-        ) * RANGE_STEP
+        range.min - RANGE_STEP
       );
+
   }
 
-  if (
-    minutes > range.max
+
+  while (
+    minutes > range.max &&
+    range.max < ABSOLUTE_MAX_TIME
   ) {
+
     range.max =
       Math.min(
         ABSOLUTE_MAX_TIME,
-        Math.ceil(
-          minutes / RANGE_STEP
-        ) * RANGE_STEP
+        range.max + RANGE_STEP
       );
+
   }
+
 }
 
+
 function rawPaidMinutes(day) {
-  if (
-    !day ||
-    !day.start ||
-    !day.finish
-  ) {
-    return 0;
-  }
 
   const start =
-    timeToMin(
-      day.start
-    );
+    timeToMin(day.start);
 
   const finish =
-    timeToMin(
-      day.finish
-    );
+    timeToMin(day.finish);
+
 
   if (
     start === null ||
     finish === null ||
     finish <= start
   ) {
+
     return 0;
+
   }
+
 
   return Math.max(
     0,
     finish -
-    start -
-    Number(
-      day.break || 0
-    )
+      start -
+      Number(day.break || 0)
   );
+
 }
 
+
 function paidMinutes(day) {
-  if (
-    !day ||
-    day.off
-  ) {
+
+  if (day.off) {
     return 0;
   }
 
   return rawPaidMinutes(day);
+
 }
+
 
 function fmtHM(minutes) {
-  const total =
+
+  const rounded =
     Math.max(
       0,
       Math.round(minutes)
     );
 
   const hours =
-    Math.floor(
-      total / 60
-    );
+    Math.floor(rounded / 60);
 
   const mins =
-    total % 60;
+    rounded % 60;
 
-  return `${hours}h ${pad(mins)}m`;
+  return (
+    `${hours}h ${pad(mins)}m`
+  );
+
 }
 
+
 function fmtCompactHM(minutes) {
-  const total =
+
+  const rounded =
     Math.max(
       0,
       Math.round(minutes)
     );
 
   const hours =
-    Math.floor(
-      total / 60
-    );
+    Math.floor(rounded / 60);
 
   const mins =
-    total % 60;
+    rounded % 60;
+
 
   if (mins === 0) {
     return `${hours}h`;
   }
 
   return `${hours}h ${mins}m`;
+
 }
 
 
@@ -387,6 +475,7 @@ function makeDays(
   start,
   normalOffWeek
 ) {
+
   const offsets = [
     0,
     1,
@@ -400,60 +489,45 @@ function makeDays(
     11
   ];
 
+
+  const offIndex =
+    normalOffWeek === 1
+      ? 4
+      : 9;
+
+
   return offsets.map(
-    (
-      offset,
-      index
-    ) => ({
-      date:
-        addDays(
-          start,
-          offset
-        ),
-
-      week:
-        index < 5
-          ? 1
-          : 2,
-
-      weekday:
-        index % 5,
-
-      off:
-        (
-          normalOffWeek === 1 &&
-          index === 4
-        ) ||
-        (
-          normalOffWeek === 2 &&
-          index === 9
-        ),
-
+    (offset, index) => ({
+      date: addDays(start, offset),
       start: "",
       finish: "",
       break: 30,
-      note: ""
+      note: "",
+      off: index === offIndex
     })
   );
+
 }
 
+
 function blankState() {
+
+  const today =
+    localISO(new Date());
+
   const start =
-    mondayOf(
-      new Date()
-    );
+    mondayOf(today);
 
   return {
     configured: false,
     start,
-    offWeek: 2,
     normalOffWeek: 2,
-    days:
-      makeDays(
-        start,
-        2
-      )
+    days: makeDays(
+      start,
+      2
+    )
   };
+
 }
 
 
@@ -462,141 +536,270 @@ function blankState() {
 ========================= */
 
 function normaliseFortnight(value) {
+
   if (
     !value ||
-    !value.start ||
-    !Array.isArray(
-      value.days
-    ) ||
-    value.days.length !== 10
+    !value.start
   ) {
     return null;
   }
 
+
   const result =
     clone(value);
+
+
+  result.configured =
+    result.configured !== false;
+
+
+  result.start =
+    mondayOf(
+      result.start
+    );
+
 
   if (
     result.normalOffWeek !== 1 &&
     result.normalOffWeek !== 2
   ) {
-    result.normalOffWeek =
-      result.offWeek === 1
-        ? 1
-        : 2;
+
+    if (
+      result.offWeek === 1 ||
+      result.offWeek === 2
+    ) {
+
+      result.normalOffWeek =
+        result.offWeek;
+
+    } else {
+
+      result.normalOffWeek = 2;
+
+    }
+
   }
 
-  result.offWeek =
-    result.normalOffWeek;
+
+  const defaultDays =
+    makeDays(
+      result.start,
+      result.normalOffWeek
+    );
+
+
+  if (
+    !Array.isArray(result.days) ||
+    result.days.length !== 10
+  ) {
+
+    result.days =
+      defaultDays;
+
+  } else {
+
+    result.days =
+      result.days.map(
+        (day, index) => ({
+
+          date:
+            day.date ||
+            defaultDays[index].date,
+
+          start:
+            day.start || "",
+
+          finish:
+            day.finish || "",
+
+          break:
+            Number.isFinite(
+              Number(day.break)
+            )
+              ? Number(day.break)
+              : 30,
+
+          note:
+            day.note || "",
+
+          off:
+            Boolean(day.off)
+
+        })
+      );
+
+
+    const hasOffDay =
+      result.days.some(
+        day => day.off
+      );
+
+
+    if (!hasOffDay) {
+
+      const offIndex =
+        result.normalOffWeek === 1
+          ? 4
+          : 9;
+
+      result.days[offIndex].off =
+        true;
+
+    }
+
+  }
+
 
   return result;
+
 }
 
+
 function loadCurrent() {
+
   const keys = [
     CURRENT_KEY,
-    "fortnightTracker.v4",
-    "fortnightTracker.v2",
-    "fortnightTracker.v1"
+    ...LEGACY_CURRENT_KEYS
   ];
 
-  for (const key of keys) {
-    try {
-      const raw =
-        localStorage.getItem(
-          key
-        );
 
-      if (!raw) {
+  for (const key of keys) {
+
+    try {
+
+      const stored =
+        localStorage.getItem(key);
+
+      if (!stored) {
         continue;
       }
 
-      const value =
+      const parsed =
         normaliseFortnight(
-          JSON.parse(raw)
+          JSON.parse(stored)
         );
 
-      if (value) {
-        return value;
+      if (parsed) {
+        return parsed;
       }
+
+    } catch (error) {
+      // Continue to next stored version.
     }
-    catch (error) {
-      // Try next stored version.
-    }
+
   }
 
+
   return blankState();
+
 }
 
+
 function loadHistory() {
+
   try {
-    const raw =
+
+    const stored =
       localStorage.getItem(
         HISTORY_KEY
       );
 
-    const value =
-      raw
-        ? JSON.parse(raw)
-        : [];
-
-    if (
-      !Array.isArray(value)
-    ) {
+    if (!stored) {
       return [];
     }
 
-    return value
-      .map(
-        item =>
-          normaliseFortnight(
-            item
-          )
-      )
+
+    const parsed =
+      JSON.parse(stored);
+
+
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+
+    return parsed
+      .map(normaliseFortnight)
       .filter(Boolean)
       .sort(
-        (
-          a,
-          b
-        ) =>
+        (a, b) =>
           a.start.localeCompare(
             b.start
           )
       );
-  }
-  catch (error) {
+
+  } catch (error) {
+
     return [];
+
   }
+
 }
+
 
 let currentState =
   loadCurrent();
 
+
 let history =
   loadHistory();
 
-let editingIndex =
-  null;
 
-let pendingNwdIndex =
-  null;
+let editingIndex = null;
+let pendingNwdIndex = null;
+
+
+/* =========================
+   SETUP STATE
+========================= */
+
+let setupStart =
+  currentState.start ||
+  mondayOf(
+    localISO(new Date())
+  );
+
+
+let setupOffWeek =
+  currentState.normalOffWeek || 2;
+
+
+/* =========================
+   RESET STATE
+========================= */
+
+let resetStart =
+  setupStart;
+
+
+let resetOffWeek = 2;
+
+
+/* =========================
+   PERSISTENCE
+========================= */
 
 function persistCurrent() {
+
   localStorage.setItem(
     CURRENT_KEY,
     JSON.stringify(
       currentState
     )
   );
+
 }
 
+
 function persistHistory() {
+
   localStorage.setItem(
     HISTORY_KEY,
     JSON.stringify(
       history
     )
   );
+
 }
 
 
@@ -605,156 +808,206 @@ function persistHistory() {
 ========================= */
 
 function allFortnights() {
-  const items =
-    history
-      .filter(
-        item =>
-          item.start !==
-          currentState.start
-      )
-      .map(
-        item => ({
-          start:
-            item.start
-        })
-      );
+
+  const collection = [];
+
+
+  history.forEach(
+    fortnight => {
+
+      if (
+        fortnight &&
+        fortnight.configured !== false
+      ) {
+
+        collection.push(
+          fortnight
+        );
+
+      }
+
+    }
+  );
+
 
   if (
-    currentState.configured
+    currentState &&
+    currentState.configured !== false
   ) {
-    items.push({
-      start:
-        currentState.start
-    });
+
+    const existingIndex =
+      collection.findIndex(
+        fortnight =>
+          fortnight.start ===
+          currentState.start
+      );
+
+
+    if (existingIndex >= 0) {
+
+      collection[existingIndex] =
+        currentState;
+
+    } else {
+
+      collection.push(
+        currentState
+      );
+
+    }
+
   }
 
-  return items.sort(
-    (
-      a,
-      b
-    ) =>
+
+  return collection.sort(
+    (a, b) =>
       a.start.localeCompare(
         b.start
       )
   );
+
 }
+
 
 function getFortnightByStart(start) {
-  if (
-    start ===
-    currentState.start
-  ) {
-    return currentState;
-  }
 
   return (
-    history.find(
-      item =>
-        item.start ===
-        start
-    ) ||
-    null
+    allFortnights().find(
+      fortnight =>
+        fortnight.start === start
+    ) || null
   );
+
 }
+
 
 function getLatestScheduledStart() {
-  const items =
+
+  const collection =
     allFortnights();
 
-  if (
-    items.length === 0
-  ) {
-    return currentState.start;
+
+  if (!collection.length) {
+    return null;
   }
 
-  return items[
-    items.length - 1
+
+  return collection[
+    collection.length - 1
   ].start;
+
 }
+
 
 function getActualCurrentStart() {
-  const today =
-    localISO(
-      new Date()
-    );
 
-  const items =
+  const today =
+    localISO(new Date());
+
+
+  const collection =
     allFortnights();
 
-  const current =
-    items.find(
-      item =>
-        today >=
-          item.start &&
-        today <=
+
+  const match =
+    collection.find(
+      fortnight => {
+
+        const end =
           addDays(
-            item.start,
+            fortnight.start,
             13
-          )
+          );
+
+        return (
+          today >= fortnight.start &&
+          today <= end
+        );
+
+      }
     );
 
-  return current
-    ? current.start
+
+  return match
+    ? match.start
     : null;
+
 }
+
 
 function getDefaultViewStart() {
-  const actual =
-    getActualCurrentStart();
 
-  if (actual) {
-    return actual;
-  }
-
-  const today =
-    localISO(
-      new Date()
-    );
-
-  const items =
+  const collection =
     allFortnights();
 
-  const upcoming =
-    items.find(
-      item =>
-        item.start >
-        today
+
+  if (!collection.length) {
+    return null;
+  }
+
+
+  const actualCurrent =
+    getActualCurrentStart();
+
+
+  if (actualCurrent) {
+    return actualCurrent;
+  }
+
+
+  const today =
+    localISO(new Date());
+
+
+  const firstFuture =
+    collection.find(
+      fortnight =>
+        fortnight.start > today
     );
 
-  if (upcoming) {
-    return upcoming.start;
+
+  if (firstFuture) {
+    return firstFuture.start;
   }
 
-  if (
-    items.length > 0
-  ) {
-    return items[
-      items.length - 1
-    ].start;
-  }
 
-  return currentState.start;
+  return collection[
+    collection.length - 1
+  ].start;
+
 }
+
 
 let viewedStart =
-  getDefaultViewStart();
+  currentState.configured === false
+    ? null
+    : getDefaultViewStart();
+
 
 function getViewedFortnight() {
-  return (
-    getFortnightByStart(
-      viewedStart
-    ) ||
-    currentState
+
+  if (!viewedStart) {
+    return null;
+  }
+
+  return getFortnightByStart(
+    viewedStart
   );
+
 }
+
 
 function getFortnightRelation(
   fortnight
 ) {
+
+  if (!fortnight) {
+    return "current";
+  }
+
+
   const today =
-    localISO(
-      new Date()
-    );
+    localISO(new Date());
 
   const end =
     addDays(
@@ -762,55 +1015,70 @@ function getFortnightRelation(
       13
     );
 
-  if (
-    today <
-    fortnight.start
-  ) {
+
+  if (today < fortnight.start) {
     return "upcoming";
   }
 
-  if (
-    today >
-    end
-  ) {
+
+  if (today > end) {
     return "past";
   }
 
+
   return "current";
+
 }
+
 
 function viewingActualCurrent() {
-  const actual =
+
+  const actualCurrent =
     getActualCurrentStart();
 
-  return (
-    actual &&
-    viewedStart ===
-    actual
+
+  return Boolean(
+    actualCurrent &&
+    viewedStart === actualCurrent
   );
+
 }
 
+
 function viewingLatestScheduled() {
-  return (
-    viewedStart ===
-    getLatestScheduledStart()
+
+  const latest =
+    getLatestScheduledStart();
+
+
+  return Boolean(
+    latest &&
+    viewedStart === latest
   );
+
 }
+
 
 function saveViewedFortnight(
   fortnight
 ) {
+
   if (
     fortnight.start ===
     currentState.start
   ) {
+
     currentState =
-      fortnight;
+      normaliseFortnight(
+        fortnight
+      );
 
     persistCurrent();
 
     return;
+
   }
+
 
   const index =
     history.findIndex(
@@ -819,14 +1087,35 @@ function saveViewedFortnight(
         fortnight.start
     );
 
-  if (
-    index >= 0
-  ) {
-    history[index] =
-      fortnight;
 
-    persistHistory();
+  if (index >= 0) {
+
+    history[index] =
+      normaliseFortnight(
+        fortnight
+      );
+
+  } else {
+
+    history.push(
+      normaliseFortnight(
+        fortnight
+      )
+    );
+
   }
+
+
+  history.sort(
+    (a, b) =>
+      a.start.localeCompare(
+        b.start
+      )
+  );
+
+
+  persistHistory();
+
 }
 
 
@@ -835,77 +1124,316 @@ function saveViewedFortnight(
 ========================= */
 
 function renderSetupDates() {
-  el(
-    "startDateButton"
-  ).textContent =
+
+  setupStart =
+    mondayOf(
+      setupStart
+    );
+
+
+  const week1Friday =
+    addDays(
+      setupStart,
+      4
+    );
+
+
+  const week2Friday =
+    addDays(
+      setupStart,
+      11
+    );
+
+
+  el("startDateButton").textContent =
     fmtDate(
-      currentState.start,
+      setupStart,
       {
-        weekday:
-          "long",
-        day:
-          "numeric",
-        month:
-          "long",
-        year:
-          "numeric"
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric"
       }
     );
 
-  el(
-    "startDateNative"
-  ).value =
-    currentState.start;
 
-  el(
-    "week1FridayLabel"
-  ).textContent =
+  el("startDateNative").value =
+    setupStart;
+
+
+  el("week1FridayLabel").textContent =
     fmtDate(
-      addDays(
-        currentState.start,
-        4
-      )
+      week1Friday,
+      {
+        day: "numeric",
+        month: "short"
+      }
     );
 
-  el(
-    "week2FridayLabel"
-  ).textContent =
+
+  el("week2FridayLabel").textContent =
     fmtDate(
-      addDays(
-        currentState.start,
-        11
-      )
+      week2Friday,
+      {
+        day: "numeric",
+        month: "short"
+      }
     );
 
-  el(
-    "setupOffSummary"
-  ).textContent =
-    `W${currentState.normalOffWeek} Fri`;
 
   document
     .querySelectorAll(
-      ".choice-btn"
+      "[data-off]"
     )
     .forEach(
       button => {
-        const week =
-          Number(
-            button.dataset.off
-              .replace(
-                "week",
-                ""
-              )
-          );
 
-        button
-          .classList
-          .toggle(
-            "selected",
-            week ===
-            currentState.normalOffWeek
-          );
+        const week =
+          button.dataset.off ===
+          "week1"
+            ? 1
+            : 2;
+
+
+        button.classList.toggle(
+          "selected",
+          week === setupOffWeek
+        );
+
       }
     );
+
+
+  el("setupOffSummary").textContent =
+    setupOffWeek === 1
+      ? "W1 Fri"
+      : "W2 Fri";
+
+}
+
+
+/* =========================
+   RESET SHEET
+========================= */
+
+function renderResetDates() {
+
+  resetStart =
+    mondayOf(
+      resetStart
+    );
+
+
+  const week1Friday =
+    addDays(
+      resetStart,
+      4
+    );
+
+
+  const week2Friday =
+    addDays(
+      resetStart,
+      11
+    );
+
+
+  el(
+    "resetStartDateButton"
+  ).textContent =
+    fmtDate(
+      resetStart,
+      {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+      }
+    );
+
+
+  el(
+    "resetStartDateNative"
+  ).value =
+    resetStart;
+
+
+  el(
+    "resetWeek1FridayLabel"
+  ).textContent =
+    fmtDate(
+      week1Friday,
+      {
+        weekday: "short",
+        day: "numeric",
+        month: "short"
+      }
+    );
+
+
+  el(
+    "resetWeek2FridayLabel"
+  ).textContent =
+    fmtDate(
+      week2Friday,
+      {
+        weekday: "short",
+        day: "numeric",
+        month: "short"
+      }
+    );
+
+
+  document
+    .querySelectorAll(
+      "[data-reset-off]"
+    )
+    .forEach(
+      button => {
+
+        const week =
+          button.dataset.resetOff ===
+          "week1"
+            ? 1
+            : 2;
+
+
+        button.classList.toggle(
+          "selected",
+          week === resetOffWeek
+        );
+
+      }
+    );
+
+}
+
+
+function openResetSheet() {
+
+  const viewed =
+    getViewedFortnight();
+
+
+  resetStart =
+    viewed
+      ? viewed.start
+      : mondayOf(
+          localISO(new Date())
+        );
+
+
+  resetOffWeek =
+    currentState.normalOffWeek === 1
+      ? 1
+      : 2;
+
+
+  renderResetDates();
+
+
+  el(
+    "resetSheet"
+  ).classList.remove(
+    "hidden"
+  );
+
+
+  el(
+    "resetPanel"
+  ).scrollTop = 0;
+
+}
+
+
+function closeResetSheet() {
+
+  el(
+    "resetSheet"
+  ).classList.add(
+    "hidden"
+  );
+
+}
+
+
+function performTrackerReset() {
+
+  const newStart =
+    mondayOf(
+      resetStart
+    );
+
+
+  const newOffWeek =
+    resetOffWeek === 1
+      ? 1
+      : 2;
+
+
+  /*
+    Remove all tracker records,
+    including legacy versions.
+  */
+
+  localStorage.removeItem(
+    CURRENT_KEY
+  );
+
+  localStorage.removeItem(
+    HISTORY_KEY
+  );
+
+
+  LEGACY_CURRENT_KEYS.forEach(
+    key => {
+      localStorage.removeItem(key);
+    }
+  );
+
+
+  history = [];
+
+
+  currentState = {
+    configured: true,
+    start: newStart,
+    normalOffWeek: newOffWeek,
+    days: makeDays(
+      newStart,
+      newOffWeek
+    )
+  };
+
+
+  viewedStart =
+    newStart;
+
+
+  setupStart =
+    newStart;
+
+
+  setupOffWeek =
+    newOffWeek;
+
+
+  pendingNwdIndex =
+    null;
+
+
+  editingIndex =
+    null;
+
+
+  persistCurrent();
+  persistHistory();
+
+
+  closeResetSheet();
+
+  renderShell();
+
 }
 
 
@@ -914,172 +1442,168 @@ function renderSetupDates() {
 ========================= */
 
 function renderFortnightNav() {
+
+  const nav =
+    el("fortnightNav");
+
+  const setupRange =
+    el("setupRange");
+
+
   if (
-    !currentState.configured
+    !currentState ||
+    currentState.configured === false
   ) {
-    el(
-      "fortnightNav"
-    ).classList.add(
+
+    nav.classList.add(
       "hidden"
     );
 
-    el(
-      "setupRange"
-    ).classList.remove(
+    setupRange.classList.remove(
       "hidden"
     );
 
     return;
+
   }
 
-  el(
-    "fortnightNav"
-  ).classList.remove(
+
+  nav.classList.remove(
     "hidden"
   );
 
-  el(
-    "setupRange"
-  ).classList.add(
+  setupRange.classList.add(
     "hidden"
   );
+
 
   const viewed =
     getViewedFortnight();
+
+
+  if (!viewed) {
+    return;
+  }
+
+
+  el(
+    "fortnightRange"
+  ).textContent =
+    fortnightRangeText(
+      viewed.start
+    );
+
 
   const relation =
     getFortnightRelation(
       viewed
     );
 
-  el(
-    "fortnightRange"
-  ).textContent =
-    `${
-      fmtDate(
-        viewed.start,
-        {
-          day:
-            "numeric",
-          month:
-            "short"
-        }
-      )
-    } – ${
-      fmtDate(
-        addDays(
-          viewed.start,
-          13
-        ),
-        {
-          day:
-            "numeric",
-          month:
-            "short",
-          year:
-            "numeric"
-        }
-      )
-    }`;
 
   const badge =
-    el(
-      "pastBadge"
-    );
+    el("pastBadge");
+
 
   if (
-    relation ===
-    "current"
+    relation === "current"
   ) {
+
     badge.classList.add(
       "hidden"
     );
-  }
 
-  else {
+  } else {
+
     badge.classList.remove(
       "hidden"
     );
 
     badge.textContent =
-      relation ===
-      "past"
+      relation === "past"
         ? "Past fortnight"
         : "Upcoming fortnight";
+
   }
 
-  const actualCurrent =
-    getActualCurrentStart();
 
-  el(
-    "returnCurrentBtn"
-  ).classList.toggle(
-    "hidden",
-    !actualCurrent ||
-    viewingActualCurrent()
-  );
-
-  const items =
+  const collection =
     allFortnights();
 
+
   const index =
-    items.findIndex(
-      item =>
-        item.start ===
-        viewed.start
+    collection.findIndex(
+      fortnight =>
+        fortnight.start ===
+        viewedStart
     );
+
 
   el(
     "prevFortnightBtn"
   ).disabled =
     index <= 0;
 
+
   el(
     "nextFortnightViewBtn"
   ).disabled =
-    (
-      index < 0 ||
-      index >=
-      items.length - 1
-    );
+    index < 0 ||
+    index >=
+      collection.length - 1;
+
+
+  const actualCurrent =
+    getActualCurrentStart();
+
+
+  el(
+    "returnCurrentBtn"
+  ).classList.toggle(
+    "hidden",
+    !actualCurrent ||
+      viewingActualCurrent()
+  );
+
 }
+
 
 function moveFortnight(
   direction
 ) {
-  const items =
+
+  const collection =
     allFortnights();
 
+
   const index =
-    items.findIndex(
-      item =>
-        item.start ===
+    collection.findIndex(
+      fortnight =>
+        fortnight.start ===
         viewedStart
     );
 
+
   const nextIndex =
-    index +
-    direction;
+    index + direction;
+
 
   if (
     nextIndex < 0 ||
     nextIndex >=
-      items.length
+      collection.length
   ) {
+
     return;
+
   }
 
-  viewedStart =
-    items[
-      nextIndex
-    ].start;
 
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth"
-  });
+  viewedStart =
+    collection[nextIndex].start;
+
 
   renderTracker();
+
 }
 
 
@@ -1090,86 +1614,113 @@ function moveFortnight(
 function getStats(
   fortnight
 ) {
+
+  const workingDays =
+    fortnight.days.filter(
+      day => !day.off
+    );
+
+
   const worked =
-    fortnight.days.reduce(
-      (
-        total,
-        day
-      ) =>
-        total +
+    workingDays.reduce(
+      (sum, day) =>
+        sum +
         paidMinutes(day),
       0
     );
 
-  const remaining =
-    Math.max(
-      0,
-      TARGET -
-      worked
-    );
-
-  const workingDays =
-    fortnight.days.filter(
-      day =>
-        !day.off
-    );
 
   const loggedDays =
     workingDays.filter(
       day =>
-        paidMinutes(day) > 0
+        Boolean(
+          day.start &&
+          day.finish
+        )
+    ).length;
+
+
+  const remaining =
+    Math.max(
+      0,
+      TARGET - worked
     );
 
+
   const unlogged =
-    workingDays.length -
-    loggedDays.length;
+    Math.max(
+      0,
+      workingDays.length -
+      loggedDays
+    );
+
+
+  const average =
+    unlogged > 0
+      ? remaining / unlogged
+      : 0;
+
+
+  const percent =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        (worked / TARGET) * 100
+      )
+    );
+
 
   return {
     worked,
     remaining,
+    workingDays:
+      workingDays.length,
     loggedDays,
     unlogged,
-
-    average:
-      unlogged
-        ? remaining /
-          unlogged
-        : 0,
-
-    percent:
-      Math.min(
-        100,
-        Math.round(
-          worked /
-          TARGET *
-          100
-        )
-      )
+    average,
+    percent
   };
+
 }
 
+
 function renderOverview() {
+
+  const fortnight =
+    getViewedFortnight();
+
+
+  if (!fortnight) {
+    return;
+  }
+
+
   const stats =
     getStats(
-      getViewedFortnight()
+      fortnight
     );
+
 
   el(
     "progressHeadline"
   ).textContent =
-    `${fmtHM(
-      stats.worked
-    )} of 75h`;
+    `${fmtHM(stats.worked)} of 75h`;
+
 
   el(
     "progressPercent"
   ).textContent =
-    `${stats.percent}%`;
+    `${Math.round(
+      stats.percent
+    )}%`;
+
 
   el(
     "progressBar"
   ).style.width =
     `${stats.percent}%`;
+
 
   el(
     "remainingMetric"
@@ -1178,149 +1729,134 @@ function renderOverview() {
       stats.remaining
     );
 
+
   el(
     "daysLeftMetric"
   ).textContent =
-    stats.unlogged;
+    String(
+      stats.unlogged
+    );
+
 
   el(
     "avgMetric"
   ).textContent =
-    fmtHM(
-      stats.average
-    );
-
-  const pace =
-    el(
-      "paceMessage"
-    );
-
-  pace.className =
-    "pace-box";
-
-  if (
-    stats.worked >=
-    TARGET
-  ) {
-    pace
-      .classList
-      .add(
-        "good"
-      );
-
-    pace.innerHTML =
-      `<strong>Target reached.</strong> ` +
-      `You are ${
-        fmtHM(
-          stats.worked -
-          TARGET
-        )
-      } over 75 hours.`;
-  }
-
-  else if (
-    stats.loggedDays.length ===
-    0
-  ) {
-    pace
-      .classList
-      .add(
-        "neutral"
-      );
-
-    pace.innerHTML =
-      `<strong>${
-        fmtHM(
-          stats.remaining
-        )
-      } remaining.</strong> ` +
-      `Average ${
-        fmtHM(
+    stats.unlogged > 0
+      ? fmtHM(
           stats.average
         )
-      } across ${
-        stats.unlogged
-      } unlogged working days.`;
+      : "—";
+
+
+  const pace =
+    el("paceMessage");
+
+
+  pace.className =
+    "pace-box neutral";
+
+
+  if (
+    stats.loggedDays === 0
+  ) {
+
+    pace.innerHTML =
+      "<strong>Ready to start.</strong> Log your first working day to begin tracking your pace.";
+
+    return;
+
   }
 
-  else {
-    const difference =
-      stats.worked -
-      (
-        TARGET / 9
-      ) *
-      stats.loggedDays.length;
 
-    if (
-      difference >= 15
-    ) {
-      pace
-        .classList
-        .add(
-          "good"
-        );
+  if (
+    stats.remaining === 0
+  ) {
 
-      pace.innerHTML =
-        `<strong>You're ahead.</strong> ` +
-        `${
-          fmtHM(
-            stats.remaining
-          )
-        } remaining, averaging ${
-          fmtHM(
-            stats.average
-          )
-        } across ${
-          stats.unlogged
-        } working days.`;
-    }
+    pace.className =
+      "pace-box good";
 
-    else if (
-      difference <= -15
-    ) {
-      pace
-        .classList
-        .add(
-          "warn"
-        );
+    pace.innerHTML =
+      "<strong>Target reached.</strong> You have completed your 75 paid hours.";
 
-      pace.innerHTML =
-        `<strong>You're slightly behind pace.</strong> ` +
-        `${
-          fmtHM(
-            stats.remaining
-          )
-        } remaining, averaging ${
-          fmtHM(
-            stats.average
-          )
-        } across ${
-          stats.unlogged
-        } working days.`;
-    }
+    return;
 
-    else {
-      pace
-        .classList
-        .add(
-          "neutral"
-        );
-
-      pace.innerHTML =
-        `<strong>On track.</strong> ` +
-        `${
-          fmtHM(
-            stats.remaining
-          )
-        } remaining, averaging ${
-          fmtHM(
-            stats.average
-          )
-        } across ${
-          stats.unlogged
-        } working days.`;
-    }
   }
+
+
+  if (
+    stats.unlogged === 0 &&
+    stats.remaining > 0
+  ) {
+
+    pace.className =
+      "pace-box warn";
+
+    pace.innerHTML =
+      `<strong>${fmtHM(
+        stats.remaining
+      )} short.</strong> All nine working days have been logged.`;
+
+    return;
+
+  }
+
+
+  if (
+    stats.average <=
+    (8 * 60) + 20
+  ) {
+
+    pace.className =
+      "pace-box good";
+
+    pace.innerHTML =
+      `<strong>Comfortably on pace.</strong> You need an average of ${fmtHM(
+        stats.average
+      )} across the remaining ${stats.unlogged} working ${
+        stats.unlogged === 1
+          ? "day"
+          : "days"
+      }.`;
+
+    return;
+
+  }
+
+
+  if (
+    stats.average <=
+    9 * 60
+  ) {
+
+    pace.className =
+      "pace-box neutral";
+
+    pace.innerHTML =
+      `<strong>On track.</strong> You need an average of ${fmtHM(
+        stats.average
+      )} across the remaining ${stats.unlogged} working ${
+        stats.unlogged === 1
+          ? "day"
+          : "days"
+      }.`;
+
+    return;
+
+  }
+
+
+  pace.className =
+    "pace-box warn";
+
+  pace.innerHTML =
+    `<strong>Longer days needed.</strong> The remaining average is ${fmtHM(
+      stats.average
+    )} across ${stats.unlogged} working ${
+      stats.unlogged === 1
+        ? "day"
+        : "days"
+    }.`;
+
 }
 
 
@@ -1329,208 +1865,230 @@ function renderOverview() {
 ========================= */
 
 function renderCalendar() {
-  const viewed =
+
+  const fortnight =
     getViewedFortnight();
 
+
+  if (!fortnight) {
+    return;
+  }
+
+
+  const grid =
+    el("calendarGrid");
+
+
+  grid.innerHTML = "";
+
+
   const today =
-    localISO(
-      new Date()
-    );
+    localISO(new Date());
 
-  el(
-    "calendarGrid"
-  ).innerHTML =
-    viewed.days
-      .map(
-        (
-          day,
-          index
-        ) => {
-          const paid =
-            paidMinutes(day);
 
-          const rawPaid =
-            rawPaidMinutes(day);
+  fortnight.days.forEach(
+    (day, index) => {
 
-          const date =
-            parseISO(
-              day.date
-            );
-
-          const weekday =
-            date
-              .toLocaleDateString(
-                "en-GB",
-                {
-                  weekday:
-                    "short"
-                }
-              );
-
-          let hoursContent =
-            "—";
-
-          if (
-            day.off
-          ) {
-            if (
-              rawPaid > 0
-            ) {
-              hoursContent =
-                `
-                  <span class="cal-off-main">
-                    OFF
-                  </span>
-                  <span class="cal-off-saved">
-                    ${fmtCompactHM(rawPaid)} saved
-                  </span>
-                `;
-            }
-
-            else {
-              hoursContent =
-                `
-                  <span class="cal-off-main">
-                    OFF
-                  </span>
-                `;
-            }
-          }
-
-          else if (
-            paid > 0
-          ) {
-            hoursContent =
-              fmtHM(
-                paid
-              );
-          }
-
-          return `
-            <button
-              class="
-                cal-cell
-                ${
-                  day.date ===
-                  today
-                    ? "today"
-                    : ""
-                }
-                ${
-                  day.off
-                    ? "off"
-                    : ""
-                }
-                ${
-                  rawPaid > 0
-                    ? "logged"
-                    : ""
-                }
-              "
-              data-cal="${index}"
-              type="button"
-            >
-
-              <div class="dow">
-                ${weekday} · W${day.week}
-              </div>
-
-              <div class="date">
-                ${date.getDate()}
-              </div>
-
-              <div class="cal-hours">
-                ${hoursContent}
-              </div>
-
-            </button>
-          `;
-        }
-      )
-      .join("");
-
-  document
-    .querySelectorAll(
-      "[data-cal]"
-    )
-    .forEach(
-      button => {
-        button.addEventListener(
-          "click",
-          () =>
-            openEditor(
-              Number(
-                button.dataset.cal
-              )
-            )
+      const button =
+        document.createElement(
+          "button"
         );
+
+
+      button.type =
+        "button";
+
+
+      button.className =
+        "cal-cell";
+
+
+      button.dataset.cal =
+        String(index);
+
+
+      if (
+        day.date === today
+      ) {
+
+        button.classList.add(
+          "today"
+        );
+
       }
-    );
+
+
+      if (day.off) {
+
+        button.classList.add(
+          "off"
+        );
+
+      }
+
+
+      const rawPaid =
+        rawPaidMinutes(day);
+
+
+      if (
+        !day.off &&
+        rawPaid > 0
+      ) {
+
+        button.classList.add(
+          "logged"
+        );
+
+      }
+
+
+      const dow =
+        fmtDate(
+          day.date,
+          {
+            weekday: "short"
+          }
+        );
+
+
+      const date =
+        parseISO(
+          day.date
+        ).getDate();
+
+
+      let hoursMarkup =
+        '<span class="cal-hours">—</span>';
+
+
+      if (day.off) {
+
+        if (rawPaid > 0) {
+
+          hoursMarkup =
+            `<span class="cal-hours">
+              <span class="cal-off-main">OFF</span>
+              <span class="cal-off-saved">${fmtCompactHM(
+                rawPaid
+              )} saved</span>
+            </span>`;
+
+        } else {
+
+          hoursMarkup =
+            '<span class="cal-hours"><span class="cal-off-main">OFF</span></span>';
+
+        }
+
+      } else if (
+        rawPaid > 0
+      ) {
+
+        hoursMarkup =
+          `<span class="cal-hours">${fmtHM(
+            rawPaid
+          )}</span>`;
+
+      }
+
+
+      button.innerHTML =
+        `<span class="dow">${dow}</span>
+         <span class="date">${date}</span>
+         ${hoursMarkup}`;
+
+
+      button.addEventListener(
+        "click",
+        () => {
+          openEditor(index);
+        }
+      );
+
+
+      grid.appendChild(
+        button
+      );
+
+    }
+  );
+
 }
 
 
 /* =========================
-   ACTION CARD
+   FORTNIGHT ACTION CARD
 ========================= */
 
+function getCurrentNwdIndex(
+  fortnight
+) {
+
+  return fortnight.days.findIndex(
+    day => day.off
+  );
+
+}
+
+
 function renderActionCard() {
-  const viewed =
+
+  const fortnight =
     getViewedFortnight();
+
+
+  if (!fortnight) {
+    return;
+  }
+
 
   const relation =
     getFortnightRelation(
-      viewed
+      fortnight
     );
 
-  const offDay =
-    viewed.days.find(
-      day =>
-        day.off
-    );
-
-  if (
-    relation ===
-    "current"
-  ) {
-    el(
-      "actionFortnightType"
-    ).textContent =
-      "Current fortnight";
-  }
-
-  else if (
-    relation ===
-    "past"
-  ) {
-    el(
-      "actionFortnightType"
-    ).textContent =
-      "Past fortnight";
-  }
-
-  else {
-    el(
-      "actionFortnightType"
-    ).textContent =
-      "Upcoming fortnight";
-  }
 
   el(
-    "actionNwdDate"
+    "actionFortnightType"
   ).textContent =
-    offDay
-      ? fmtDate(
-          offDay.date,
-          {
-            weekday:
-              "short",
-            day:
-              "numeric",
-            month:
-              "short"
-          }
-        )
-      : "Not set";
+    relation === "past"
+      ? "Past fortnight"
+      : relation === "upcoming"
+        ? "Upcoming fortnight"
+        : "Current fortnight";
+
+
+  const nwdIndex =
+    getCurrentNwdIndex(
+      fortnight
+    );
+
+
+  if (nwdIndex >= 0) {
+
+    el(
+      "actionNwdDate"
+    ).textContent =
+      fmtDate(
+        fortnight.days[
+          nwdIndex
+        ].date,
+        {
+          weekday: "short",
+          day: "numeric",
+          month: "short"
+        }
+      );
+
+  } else {
+
+    el(
+      "actionNwdDate"
+    ).textContent = "—";
+
+  }
+
 
   el(
     "startNextBtn"
@@ -1539,173 +2097,208 @@ function renderActionCard() {
     !viewingLatestScheduled()
   );
 
+
   const actualCurrent =
     getActualCurrentStart();
+
 
   el(
     "returnCurrentActionBtn"
   ).classList.toggle(
     "hidden",
     !actualCurrent ||
-    viewingActualCurrent()
+      viewingActualCurrent()
   );
+
 }
 
 
 /* =========================
-   NON-WORKING DAY PICKER
+   NON-WORKING DAY
 ========================= */
 
-function getCurrentNwdIndex(
-  fortnight
-) {
-  return fortnight.days.findIndex(
-    day =>
-      day.off
-  );
-}
-
 function renderNwdPicker() {
-  const viewed =
+
+  const fortnight =
     getViewedFortnight();
 
-  if (
-    pendingNwdIndex === null
-  ) {
-    pendingNwdIndex =
-      getCurrentNwdIndex(
-        viewed
-      );
+
+  if (!fortnight) {
+    return;
   }
 
-  el(
-    "nwdGrid"
-  ).innerHTML =
-    viewed.days
-      .map(
-        (
-          day,
-          index
-        ) => {
-          const date =
-            parseISO(
-              day.date
-            );
 
-          const weekday =
-            date
-              .toLocaleDateString(
-                "en-GB",
-                {
-                  weekday:
-                    "short"
-                }
-              );
+  const grid =
+    el("nwdGrid");
 
-          const rawPaid =
-            rawPaidMinutes(
-              day
-            );
 
-          let status =
-            `W${day.week}`;
+  grid.innerHTML = "";
 
-          if (
-            rawPaid > 0
-          ) {
-            status =
-              fmtHM(
-                rawPaid
-              );
-          }
 
-          return `
-            <button
-              class="
-                nwd-day
-                ${
-                  index ===
-                  pendingNwdIndex
-                    ? "selected"
-                    : ""
-                }
-                ${
-                  rawPaid > 0
-                    ? "has-hours"
-                    : ""
-                }
-              "
-              data-nwd="${index}"
-              type="button"
-            >
+  fortnight.days.forEach(
+    (day, index) => {
 
-              <span class="nwd-dow">
-                ${weekday}
-              </span>
+      const button =
+        document.createElement(
+          "button"
+        );
 
-              <span class="nwd-date">
-                ${date.getDate()}
-              </span>
 
-              <span class="nwd-status">
-                ${status}
-              </span>
+      button.type =
+        "button";
 
-            </button>
-          `;
-        }
-      )
-      .join("");
 
-  document
-    .querySelectorAll(
-      "[data-nwd]"
-    )
-    .forEach(
-      button => {
-        button.addEventListener(
-          "click",
-          () => {
-            pendingNwdIndex =
-              Number(
-                button.dataset.nwd
-              );
+      button.className =
+        "nwd-day";
 
-            renderNwdPicker();
+
+      button.dataset.nwd =
+        String(index);
+
+
+      if (
+        index ===
+        pendingNwdIndex
+      ) {
+
+        button.classList.add(
+          "selected"
+        );
+
+      }
+
+
+      const rawPaid =
+        rawPaidMinutes(day);
+
+
+      if (rawPaid > 0) {
+
+        button.classList.add(
+          "has-hours"
+        );
+
+      }
+
+
+      const dow =
+        fmtDate(
+          day.date,
+          {
+            weekday: "short"
           }
         );
-      }
-    );
 
-  const selected =
-    viewed.days[
+
+      const date =
+        parseISO(
+          day.date
+        ).getDate();
+
+
+      let status = "";
+
+
+      if (
+        index ===
+        pendingNwdIndex
+      ) {
+
+        status =
+          "Day off";
+
+      } else if (
+        rawPaid > 0
+      ) {
+
+        status =
+          fmtCompactHM(
+            rawPaid
+          );
+
+      }
+
+
+      button.innerHTML =
+        `<span class="nwd-dow">${dow}</span>
+         <span class="nwd-date">${date}</span>
+         <span class="nwd-status">${status}</span>`;
+
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          pendingNwdIndex =
+            index;
+
+          renderNwdPicker();
+
+        }
+      );
+
+
+      grid.appendChild(
+        button
+      );
+
+    }
+  );
+
+
+  const selectedDay =
+    fortnight.days[
       pendingNwdIndex
     ];
 
-  const hasHours =
-    selected &&
-    rawPaidMinutes(
-      selected
-    ) > 0;
+
+  const hasLoggedHours =
+    selectedDay
+      ? rawPaidMinutes(
+          selectedDay
+        ) > 0
+      : false;
+
 
   el(
     "nwdWarning"
   ).classList.toggle(
     "hidden",
-    !hasHours
+    !hasLoggedHours
   );
+
 }
 
+
 function openNwdPicker() {
-  const viewed =
+
+  const fortnight =
     getViewedFortnight();
+
+
+  if (!fortnight) {
+    return;
+  }
+
 
   pendingNwdIndex =
     getCurrentNwdIndex(
-      viewed
+      fortnight
     );
 
+
+  if (pendingNwdIndex < 0) {
+
+    pendingNwdIndex =
+      fortnight.normalOffWeek === 1
+        ? 4
+        : 9;
+
+  }
+
+
   renderNwdPicker();
+
 
   el(
     "nwdSheet"
@@ -1713,151 +2306,219 @@ function openNwdPicker() {
     "hidden"
   );
 
-  document.body.style.overflow =
-    "hidden";
 
-  requestAnimationFrame(
-    () => {
-      el(
-        "nwdPanel"
-      ).scrollTop = 0;
-    }
-  );
+  el(
+    "nwdPanel"
+  ).scrollTop = 0;
+
 }
 
+
 function closeNwdPicker() {
+
   el(
     "nwdSheet"
   ).classList.add(
     "hidden"
   );
 
-  document.body.style.overflow =
-    "";
-
-  pendingNwdIndex =
-    null;
 }
 
+
 function saveNwdChange() {
+
+  const fortnight =
+    getViewedFortnight();
+
+
   if (
+    !fortnight ||
     pendingNwdIndex === null
   ) {
+
     return;
+
   }
 
-  const viewed =
+
+  const updated =
     clone(
-      getViewedFortnight()
+      fortnight
     );
 
-  viewed.days.forEach(
-    (
-      day,
-      index
-    ) => {
+
+  updated.days.forEach(
+    (day, index) => {
+
       day.off =
         index ===
         pendingNwdIndex;
+
     }
   );
 
+
   saveViewedFortnight(
-    viewed
+    updated
   );
+
 
   closeNwdPicker();
 
   renderTracker();
+
 }
 
 
 /* =========================
-   TRACKER
+   TRACKER RENDERING
 ========================= */
 
 function renderTracker() {
+
   renderFortnightNav();
   renderOverview();
   renderCalendar();
   renderActionCard();
+
 }
 
+
 function renderShell() {
+
+  const configured =
+    currentState &&
+    currentState.configured !== false;
+
+
   el(
     "setupView"
   ).classList.toggle(
     "hidden",
-    currentState.configured
+    configured
   );
+
 
   el(
     "trackerView"
   ).classList.toggle(
     "hidden",
-    !currentState.configured
+    !configured
   );
 
-  renderSetupDates();
-  renderFortnightNav();
+
+  if (!configured) {
+
+    setupStart =
+      currentState.start ||
+      mondayOf(
+        localISO(new Date())
+      );
+
+
+    setupOffWeek =
+      currentState.normalOffWeek ||
+      2;
+
+
+    renderSetupDates();
+
+    renderFortnightNav();
+
+    return;
+
+  }
+
 
   if (
-    currentState.configured
+    !viewedStart ||
+    !getFortnightByStart(
+      viewedStart
+    )
   ) {
-    renderTracker();
+
+    viewedStart =
+      getDefaultViewStart();
+
   }
+
+
+  renderTracker();
+
 }
 
 
 /* =========================
-   HISTORY / ROLLOVER
+   HISTORY / NEXT FORTNIGHT
 ========================= */
 
 function archiveCurrentFortnight() {
-  const snapshot =
+
+  if (
+    !currentState ||
+    currentState.configured === false
+  ) {
+
+    return;
+
+  }
+
+
+  const archived =
     clone(
       currentState
     );
 
-  snapshot.archivedAt =
-    new Date()
-      .toISOString();
 
-  const index =
+  const existingIndex =
     history.findIndex(
-      item =>
-        item.start ===
-        snapshot.start
+      fortnight =>
+        fortnight.start ===
+        archived.start
     );
 
-  if (
-    index >= 0
-  ) {
-    history[index] =
-      snapshot;
-  }
 
-  else {
+  if (existingIndex >= 0) {
+
+    history[existingIndex] =
+      archived;
+
+  } else {
+
     history.push(
-      snapshot
+      archived
     );
+
   }
+
 
   history.sort(
-    (
-      a,
-      b
-    ) =>
+    (a, b) =>
       a.start.localeCompare(
         b.start
       )
   );
 
+
   persistHistory();
+
 }
 
+
 function startNextFortnight() {
+
+  if (
+    !currentState ||
+    currentState.configured === false
+  ) {
+
+    return;
+
+  }
+
+
   archiveCurrentFortnight();
+
 
   const newStart =
     addDays(
@@ -1865,461 +2526,527 @@ function startNextFortnight() {
       14
     );
 
+
   const normalOffWeek =
     currentState.normalOffWeek === 1
       ? 1
       : 2;
 
+
   currentState = {
-    configured:
-      true,
-
-    start:
+    configured: true,
+    start: newStart,
+    normalOffWeek,
+    days: makeDays(
       newStart,
-
-    offWeek:
-      normalOffWeek,
-
-    normalOffWeek:
-      normalOffWeek,
-
-    days:
-      makeDays(
-        newStart,
-        normalOffWeek
-      )
+      normalOffWeek
+    )
   };
+
 
   viewedStart =
     newStart;
 
+
   persistCurrent();
 
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth"
-  });
-
   renderShell();
+
 }
 
+
 function returnToCurrent() {
-  const actual =
+
+  const actualCurrent =
     getActualCurrentStart();
 
-  if (!actual) {
+
+  if (!actualCurrent) {
     return;
   }
 
+
   viewedStart =
-    actual;
+    actualCurrent;
 
-  closeNwdPicker();
-
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth"
-  });
 
   renderTracker();
+
 }
 
 
 /* =========================
-   DAY EDITOR
+   EDITOR
 ========================= */
 
 function clearPresetSelection() {
+
   document
     .querySelectorAll(
       ".quick-preset"
     )
     .forEach(
-      button =>
-        button
-          .classList
-          .remove(
-            "selected"
-          )
+      button => {
+
+        button.classList.remove(
+          "selected"
+        );
+
+      }
     );
+
 }
 
-function setPresetSelection(
-  key
-) {
+
+function setPresetSelection(key) {
+
   clearPresetSelection();
+
 
   const button =
     document.querySelector(
       `.quick-preset[data-preset="${key}"]`
     );
 
+
   if (button) {
-    button
-      .classList
-      .add(
-        "selected"
-      );
+
+    button.classList.add(
+      "selected"
+    );
+
   }
+
 }
+
 
 function detectPreset() {
-  for (
-    const [
-      key,
-      preset
-    ] of Object.entries(
-      presets
-    )
-  ) {
-    if (
-      editorStart ===
-        preset.start &&
-      editorFinish ===
-        preset.finish &&
-      Number(
-        editorBreak
-      ) ===
-        preset.break
-    ) {
-      setPresetSelection(
-        key
-      );
 
-      return;
-    }
+  const found =
+    Object.entries(
+      presets
+    ).find(
+      ([, preset]) =>
+        preset.start ===
+          editorStart &&
+        preset.finish ===
+          editorFinish &&
+        preset.break ===
+          editorBreak
+    );
+
+
+  if (found) {
+
+    setPresetSelection(
+      found[0]
+    );
+
+  } else {
+
+    clearPresetSelection();
+
   }
 
-  clearPresetSelection();
 }
+
 
 function renderBreakButtons() {
-  el(
-    "breakButtons"
-  ).innerHTML =
-    breakOptions
-      .map(
-        option => `
-          <button
-            class="break-btn ${
-              Number(option) ===
-              Number(editorBreak)
-                ? "selected"
-                : ""
-            }"
-            data-break="${option}"
-            type="button"
-          >
-            ${option}m
-          </button>
-        `
-      )
-      .join("");
 
-  el(
-    "breakButtons"
-  )
-    .querySelectorAll(
-      "[data-break]"
-    )
-    .forEach(
-      button => {
-        button.addEventListener(
-          "click",
-          () => {
-            editorBreak =
-              Number(
-                button.dataset.break
-              );
+  const holder =
+    el("breakButtons");
 
-            renderBreakButtons();
-            detectPreset();
-            refreshEditorTotal();
-          }
+
+  holder.innerHTML = "";
+
+
+  breakOptions.forEach(
+    minutes => {
+
+      const button =
+        document.createElement(
+          "button"
         );
+
+
+      button.type =
+        "button";
+
+
+      button.className =
+        "break-btn";
+
+
+      if (
+        minutes ===
+        editorBreak
+      ) {
+
+        button.classList.add(
+          "selected"
+        );
+
       }
-    );
+
+
+      button.textContent =
+        `${minutes}m`;
+
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          editorBreak =
+            minutes;
+
+          renderBreakButtons();
+
+          detectPreset();
+
+          refreshEditorTotal();
+
+        }
+      );
+
+
+      holder.appendChild(
+        button
+      );
+
+    }
+  );
+
 }
+
 
 function renderTimePicker(
   type
 ) {
+
   const isStart =
     type === "start";
+
 
   const range =
     isStart
       ? startRange
       : finishRange;
+
 
   const value =
     isStart
       ? editorStart
       : editorFinish;
 
+
+  const grid =
+    isStart
+      ? el("startButtons")
+      : el("finishButtons");
+
+
+  const label =
+    isStart
+      ? el("startTimeRange")
+      : el("finishTimeRange");
+
+
+  const earlierButton =
+    isStart
+      ? el("earlierStartBtn")
+      : el("earlierFinishBtn");
+
+
+  const laterButton =
+    isStart
+      ? el("laterStartBtn")
+      : el("laterFinishBtn");
+
+
   ensureTimeInRange(
     value,
     range
   );
 
-  const grid =
-    el(
-      isStart
-        ? "startButtons"
-        : "finishButtons"
-    );
-
-  const label =
-    el(
-      isStart
-        ? "startTimeRange"
-        : "finishTimeRange"
-    );
-
-  const earlierButton =
-    el(
-      isStart
-        ? "earlierStartBtn"
-        : "earlierFinishBtn"
-    );
-
-  const laterButton =
-    el(
-      isStart
-        ? "laterStartBtn"
-        : "laterFinishBtn"
-    );
 
   label.textContent =
-    `${
-      minToTime(
-        range.min
-      )
-    }–${
-      minToTime(
-        range.max
-      )
-    }`;
-
-  const options =
-    buildTimeOptions(
-      range.min,
+    `${minToTime(
+      range.min
+    )}–${minToTime(
       range.max
-    );
+    )}`;
 
-  grid.innerHTML =
-    options
-      .map(
-        option => `
-          <button
-            class="time-btn ${
-              option === value
-                ? "selected"
-                : ""
-            }"
-            data-time="${option}"
-            data-time-type="${type}"
-            type="button"
-          >
-            ${option}
-          </button>
-        `
-      )
-      .join("");
 
-  grid
-    .querySelectorAll(
-      "[data-time]"
-    )
-    .forEach(
-      button => {
-        button.addEventListener(
-          "click",
-          () => {
-            if (
-              type ===
-              "start"
-            ) {
-              editorStart =
-                button.dataset.time;
-            }
+  grid.innerHTML = "";
 
-            else {
-              editorFinish =
-                button.dataset.time;
-            }
 
-            renderEditorValues();
-            detectPreset();
-            refreshEditorTotal();
+  buildTimeOptions(
+    range.min,
+    range.max
+  ).forEach(
+    time => {
 
-            if (
-              type ===
-              "start"
-            ) {
-              el(
-                "startTimePicker"
-              ).classList.add(
-                "hidden"
-              );
-            }
-
-            else {
-              el(
-                "finishTimePicker"
-              ).classList.add(
-                "hidden"
-              );
-            }
-          }
+      const button =
+        document.createElement(
+          "button"
         );
+
+
+      button.type =
+        "button";
+
+
+      button.className =
+        "time-btn";
+
+
+      button.dataset.time =
+        time;
+
+
+      button.textContent =
+        time;
+
+
+      if (
+        time === value
+      ) {
+
+        button.classList.add(
+          "selected"
+        );
+
       }
-    );
+
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          if (isStart) {
+
+            editorStart =
+              button.dataset.time;
+
+          } else {
+
+            editorFinish =
+              button.dataset.time;
+
+          }
+
+
+          renderEditorValues();
+
+          detectPreset();
+
+          refreshEditorTotal();
+
+
+          if (isStart) {
+
+            el(
+              "startTimePicker"
+            ).classList.add(
+              "hidden"
+            );
+
+          } else {
+
+            el(
+              "finishTimePicker"
+            ).classList.add(
+              "hidden"
+            );
+
+          }
+
+        }
+      );
+
+
+      grid.appendChild(
+        button
+      );
+
+    }
+  );
+
 
   earlierButton.disabled =
     range.min <=
     ABSOLUTE_MIN_TIME;
 
+
   laterButton.disabled =
     range.max >=
     ABSOLUTE_MAX_TIME;
+
 }
 
+
 function renderEditorValues() {
+
   el(
     "startTimeValue"
   ).textContent =
     editorStart;
+
 
   el(
     "finishTimeValue"
   ).textContent =
     editorFinish;
 
+
   renderBreakButtons();
+
+  renderTimePicker(
+    "start"
+  );
+
+  renderTimePicker(
+    "finish"
+  );
+
 }
 
+
 function closeTimePickers() {
+
   el(
     "startTimePicker"
   ).classList.add(
     "hidden"
   );
 
+
   el(
     "finishTimePicker"
   ).classList.add(
     "hidden"
   );
+
 }
+
 
 function openTimePicker(
   type
 ) {
-  const startPanel =
+
+  const startPicker =
     el(
       "startTimePicker"
     );
 
-  const finishPanel =
+
+  const finishPicker =
     el(
       "finishTimePicker"
     );
 
-  if (
-    type ===
-    "start"
-  ) {
-    const opening =
-      startPanel.classList.contains(
+
+  if (type === "start") {
+
+    const willOpen =
+      startPicker.classList.contains(
         "hidden"
       );
 
-    finishPanel.classList.add(
+
+    finishPicker.classList.add(
       "hidden"
     );
 
-    if (opening) {
+
+    startPicker.classList.toggle(
+      "hidden",
+      !willOpen
+    );
+
+
+    if (willOpen) {
+
       renderTimePicker(
         "start"
       );
 
-      startPanel.classList.remove(
-        "hidden"
-      );
     }
 
-    else {
-      startPanel.classList.add(
-        "hidden"
-      );
-    }
-  }
+  } else {
 
-  else {
-    const opening =
-      finishPanel.classList.contains(
+    const willOpen =
+      finishPicker.classList.contains(
         "hidden"
       );
 
-    startPanel.classList.add(
+
+    startPicker.classList.add(
       "hidden"
     );
 
-    if (opening) {
+
+    finishPicker.classList.toggle(
+      "hidden",
+      !willOpen
+    );
+
+
+    if (willOpen) {
+
       renderTimePicker(
         "finish"
       );
 
-      finishPanel.classList.remove(
-        "hidden"
-      );
     }
 
-    else {
-      finishPanel.classList.add(
-        "hidden"
-      );
-    }
   }
+
 }
+
 
 function expandTimeRange(
   type,
   direction
 ) {
+
   const range =
     type === "start"
       ? startRange
       : finishRange;
 
-  if (
-    direction <
-    0
-  ) {
+
+  if (direction < 0) {
+
     range.min =
       Math.max(
         ABSOLUTE_MIN_TIME,
         range.min -
-        RANGE_STEP
+          RANGE_STEP
       );
-  }
 
-  else {
+  } else {
+
     range.max =
       Math.min(
         ABSOLUTE_MAX_TIME,
         range.max +
-        RANGE_STEP
+          RANGE_STEP
       );
+
   }
+
 
   renderTimePicker(
     type
   );
+
 }
 
+
 function editorValue() {
+
   return {
     start:
       editorStart,
@@ -2328,119 +3055,162 @@ function editorValue() {
       editorFinish,
 
     break:
-      Number(
-        editorBreak
-      ),
+      editorBreak,
 
     note:
       el(
         "dayNote"
-      )
-        .value
-        .trim()
+      ).value.trim()
   };
+
 }
 
-function refreshEditorTotal() {
-  const temp =
-    {
-      off: false,
-      ...editorValue()
-    };
 
-  const paid =
+function refreshEditorTotal() {
+
+  const value =
+    editorValue();
+
+
+  const minutes =
     rawPaidMinutes(
-      temp
+      value
     );
+
 
   el(
     "editorPaid"
   ).textContent =
-    fmtHM(paid);
-
-  const warning =
-    el(
-      "dayWarning"
+    fmtHM(
+      minutes
     );
 
-  let text =
+
+  const warning =
+    el("dayWarning");
+
+
+  warning.classList.add(
+    "hidden"
+  );
+
+
+  warning.textContent =
     "";
+
 
   const start =
     timeToMin(
-      temp.start
+      value.start
     );
+
 
   const finish =
     timeToMin(
-      temp.finish
+      value.finish
     );
 
+
   if (
-    start !== null &&
-    finish !== null &&
+    start === null ||
+    finish === null ||
     finish <= start
   ) {
-    text =
+
+    warning.textContent =
       "Finish time must be later than start time.";
+
+    warning.classList.remove(
+      "hidden"
+    );
+
+    return;
+
   }
 
-  else if (
-    paid > 540
+
+  if (
+    minutes > 9 * 60
   ) {
-    text =
-      "This is more than 9 paid hours.";
+
+    warning.textContent =
+      "This records more than 9 paid hours.";
+
+    warning.classList.remove(
+      "hidden"
+    );
+
+    return;
+
   }
 
-  else if (
-    paid > 0 &&
-    paid < 360
+
+  if (
+    minutes < 6 * 60
   ) {
-    text =
-      "This is under 6 paid hours.";
+
+    warning.textContent =
+      "This records fewer than 6 paid hours.";
+
+    warning.classList.remove(
+      "hidden"
+    );
+
   }
 
-  warning.textContent =
-    text;
-
-  warning.classList.toggle(
-    "hidden",
-    !text
-  );
 }
 
+
 function resetEditorScroll() {
+
   requestAnimationFrame(
     () => {
+
       el(
         "editorPanel"
       ).scrollTop = 0;
 
-      requestAnimationFrame(
-        () => {
-          el(
-            "editorPanel"
-          ).scrollTop = 0;
-        }
-      );
     }
   );
+
 }
 
+
 function openEditor(index) {
+
+  const fortnight =
+    getViewedFortnight();
+
+
+  if (
+    !fortnight ||
+    !fortnight.days[index]
+  ) {
+
+    return;
+
+  }
+
+
   editingIndex =
     index;
 
+
   const day =
-    getViewedFortnight()
-      .days[
-        index
-      ];
+    fortnight.days[index];
+
+
+  const weekNumber =
+    index <= 4
+      ? 1
+      : 2;
+
 
   el(
     "editorWeek"
   ).textContent =
-    `Week ${day.week}`;
+    `Week ${weekNumber}`;
+
 
   el(
     "editorDate"
@@ -2448,14 +3218,12 @@ function openEditor(index) {
     fmtDate(
       day.date,
       {
-        weekday:
-          "long",
-        day:
-          "numeric",
-        month:
-          "long"
+        weekday: "long",
+        day: "numeric",
+        month: "long"
       }
     );
+
 
   el(
     "editorSheet"
@@ -2463,8 +3231,6 @@ function openEditor(index) {
     "hidden"
   );
 
-  document.body.style.overflow =
-    "hidden";
 
   el(
     "offDayPanel"
@@ -2473,6 +3239,7 @@ function openEditor(index) {
     !day.off
   );
 
+
   el(
     "workDayPanel"
   ).classList.toggle(
@@ -2480,73 +3247,91 @@ function openEditor(index) {
     day.off
   );
 
-  resetEditorScroll();
 
-  if (
-    day.off
-  ) {
+  if (day.off) {
+
+    resetEditorScroll();
+
     return;
+
   }
 
+
   closeTimePickers();
+
 
   startRange = {
     ...defaultStartRange
   };
 
+
   finishRange = {
     ...defaultFinishRange
   };
+
 
   editorStart =
     day.start ||
     "07:30";
 
+
   editorFinish =
     day.finish ||
     "16:30";
 
+
   editorBreak =
-    Number(
-      day.break ||
-      30
-    );
+    Number.isFinite(
+      Number(day.break)
+    )
+      ? Number(day.break)
+      : 30;
+
 
   ensureTimeInRange(
     editorStart,
     startRange
   );
 
+
   ensureTimeInRange(
     editorFinish,
     finishRange
   );
 
+
   el(
     "dayNote"
   ).value =
-    day.note ||
-    "";
+    day.note || "";
+
 
   renderEditorValues();
+
   detectPreset();
+
   refreshEditorTotal();
+
+  resetEditorScroll();
+
 }
 
+
 function closeEditor() {
+
+  closeTimePickers();
+
+
   el(
     "editorSheet"
   ).classList.add(
     "hidden"
   );
 
-  document.body.style.overflow =
-    "";
-
-  closeTimePickers();
 
   editingIndex =
     null;
+
 }
 
 
@@ -2554,48 +3339,34 @@ function closeEditor() {
    EVENTS
 ========================= */
 
-function confirmStartNext() {
-  const confirmed =
-    confirm(
-      "Start the next fortnight? Existing fortnights will remain available."
-    );
-
-  if (
-    confirmed
-  ) {
-    startNextFortnight();
-  }
-}
-
 function bindEvents() {
+
+  /*
+    Initial setup
+  */
 
   document
     .querySelectorAll(
-      ".choice-btn"
+      "[data-off]"
     )
     .forEach(
       button => {
+
         button.addEventListener(
           "click",
           () => {
-            const week =
-              Number(
-                button.dataset.off
-                  .replace(
-                    "week",
-                    ""
-                  )
-              );
 
-            currentState.offWeek =
-              week;
-
-            currentState.normalOffWeek =
-              week;
+            setupOffWeek =
+              button.dataset.off ===
+              "week1"
+                ? 1
+                : 2;
 
             renderSetupDates();
+
           }
         );
+
       }
     );
 
@@ -2605,13 +3376,15 @@ function bindEvents() {
   ).addEventListener(
     "click",
     () => {
-      currentState.start =
+
+      setupStart =
         addDays(
-          currentState.start,
+          setupStart,
           -7
         );
 
       renderSetupDates();
+
     }
   );
 
@@ -2621,13 +3394,15 @@ function bindEvents() {
   ).addEventListener(
     "click",
     () => {
-      currentState.start =
+
+      setupStart =
         addDays(
-          currentState.start,
+          setupStart,
           7
         );
 
       renderSetupDates();
+
     }
   );
 
@@ -2637,21 +3412,26 @@ function bindEvents() {
   ).addEventListener(
     "click",
     () => {
-      const picker =
+
+      const input =
         el(
           "startDateNative"
         );
 
+
       if (
-        typeof picker.showPicker ===
+        typeof input.showPicker ===
         "function"
       ) {
-        picker.showPicker();
+
+        input.showPicker();
+
+      } else {
+
+        input.click();
+
       }
 
-      else {
-        picker.click();
-      }
     }
   );
 
@@ -2661,18 +3441,22 @@ function bindEvents() {
   ).addEventListener(
     "change",
     event => {
+
       if (
         !event.target.value
       ) {
         return;
       }
 
-      currentState.start =
+
+      setupStart =
         mondayOf(
           event.target.value
         );
 
+
       renderSetupDates();
+
     }
   );
 
@@ -2682,35 +3466,53 @@ function bindEvents() {
   ).addEventListener(
     "click",
     () => {
-      currentState.days =
-        makeDays(
-          currentState.start,
-          currentState.normalOffWeek
-        );
 
-      currentState.offWeek =
-        currentState.normalOffWeek;
+      currentState = {
+        configured: true,
+        start:
+          mondayOf(
+            setupStart
+          ),
+        normalOffWeek:
+          setupOffWeek,
+        days:
+          makeDays(
+            mondayOf(
+              setupStart
+            ),
+            setupOffWeek
+          )
+      };
 
-      currentState.configured =
-        true;
+
+      history = [];
+
 
       viewedStart =
         currentState.start;
 
+
       persistCurrent();
+
+      persistHistory();
+
       renderShell();
+
     }
   );
 
+
+  /*
+    Fortnight navigation
+  */
 
   el(
     "prevFortnightBtn"
   ).addEventListener(
     "click",
-    () =>
-      moveFortnight(
-        -1
-      )
+    () => {
+      moveFortnight(-1);
+    }
   );
 
 
@@ -2718,10 +3520,9 @@ function bindEvents() {
     "nextFortnightViewBtn"
   ).addEventListener(
     "click",
-    () =>
-      moveFortnight(
-        1
-      )
+    () => {
+      moveFortnight(1);
+    }
   );
 
 
@@ -2734,10 +3535,10 @@ function bindEvents() {
 
 
   el(
-    "changeNwdBtn"
+    "returnCurrentActionBtn"
   ).addEventListener(
     "click",
-    openNwdPicker
+    returnToCurrent
   );
 
 
@@ -2745,15 +3546,19 @@ function bindEvents() {
     "startNextBtn"
   ).addEventListener(
     "click",
-    confirmStartNext
+    startNextFortnight
   );
 
 
+  /*
+    NWD
+  */
+
   el(
-    "returnCurrentActionBtn"
+    "changeNwdBtn"
   ).addEventListener(
     "click",
-    returnToCurrent
+    openNwdPicker
   );
 
 
@@ -2766,29 +3571,169 @@ function bindEvents() {
 
 
   el(
-    "nwdSheet"
-  ).addEventListener(
-    "click",
-    event => {
-      if (
-        event.target ===
-        el(
-          "nwdSheet"
-        )
-      ) {
-        closeNwdPicker();
-      }
-    }
-  );
-
-
-  el(
     "saveNwdBtn"
   ).addEventListener(
     "click",
     saveNwdChange
   );
 
+
+  /*
+    Reset tracker
+  */
+
+  el(
+    "resetTrackerBtn"
+  ).addEventListener(
+    "click",
+    openResetSheet
+  );
+
+
+  el(
+    "closeReset"
+  ).addEventListener(
+    "click",
+    closeResetSheet
+  );
+
+
+  el(
+    "cancelResetBtn"
+  ).addEventListener(
+    "click",
+    closeResetSheet
+  );
+
+
+  el(
+    "resetPrevMonday"
+  ).addEventListener(
+    "click",
+    () => {
+
+      resetStart =
+        addDays(
+          resetStart,
+          -7
+        );
+
+      renderResetDates();
+
+    }
+  );
+
+
+  el(
+    "resetNextMonday"
+  ).addEventListener(
+    "click",
+    () => {
+
+      resetStart =
+        addDays(
+          resetStart,
+          7
+        );
+
+      renderResetDates();
+
+    }
+  );
+
+
+  el(
+    "resetStartDateButton"
+  ).addEventListener(
+    "click",
+    () => {
+
+      const input =
+        el(
+          "resetStartDateNative"
+        );
+
+
+      if (
+        typeof input.showPicker ===
+        "function"
+      ) {
+
+        input.showPicker();
+
+      } else {
+
+        input.click();
+
+      }
+
+    }
+  );
+
+
+  el(
+    "resetStartDateNative"
+  ).addEventListener(
+    "change",
+    event => {
+
+      if (
+        !event.target.value
+      ) {
+        return;
+      }
+
+
+      resetStart =
+        mondayOf(
+          event.target.value
+        );
+
+
+      renderResetDates();
+
+    }
+  );
+
+
+  document
+    .querySelectorAll(
+      "[data-reset-off]"
+    )
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            resetOffWeek =
+              button.dataset.resetOff ===
+              "week1"
+                ? 1
+                : 2;
+
+
+            renderResetDates();
+
+          }
+        );
+
+      }
+    );
+
+
+  el(
+    "confirmResetBtn"
+  ).addEventListener(
+    "click",
+    performTrackerReset
+  );
+
+
+  /*
+    Day editor
+  */
 
   el(
     "closeEditor"
@@ -2806,65 +3751,62 @@ function bindEvents() {
   );
 
 
-  el(
-    "editorSheet"
-  ).addEventListener(
-    "click",
-    event => {
-      if (
-        event.target ===
-        el(
-          "editorSheet"
-        )
-      ) {
-        closeEditor();
-      }
-    }
-  );
-
-
   document
     .querySelectorAll(
       ".quick-preset"
     )
     .forEach(
       button => {
+
         button.addEventListener(
           "click",
           () => {
+
             const key =
               button.dataset.preset;
 
+
             const preset =
-              presets[
-                key
-              ];
+              presets[key];
+
+
+            if (!preset) {
+              return;
+            }
+
 
             editorStart =
               preset.start;
 
+
             editorFinish =
               preset.finish;
 
+
             editorBreak =
               preset.break;
+
 
             el(
               "dayNote"
             ).value =
               preset.note;
 
+
             ensureTimeInRange(
               editorStart,
               startRange
             );
+
 
             ensureTimeInRange(
               editorFinish,
               finishRange
             );
 
+
             renderEditorValues();
+
             setPresetSelection(
               key
             );
@@ -2872,8 +3814,10 @@ function bindEvents() {
             refreshEditorTotal();
 
             closeTimePickers();
+
           }
         );
+
       }
     );
 
@@ -2882,10 +3826,13 @@ function bindEvents() {
     "startTimeRow"
   ).addEventListener(
     "click",
-    () =>
+    () => {
+
       openTimePicker(
         "start"
-      )
+      );
+
+    }
   );
 
 
@@ -2893,10 +3840,13 @@ function bindEvents() {
     "finishTimeRow"
   ).addEventListener(
     "click",
-    () =>
+    () => {
+
       openTimePicker(
         "finish"
-      )
+      );
+
+    }
   );
 
 
@@ -2904,12 +3854,15 @@ function bindEvents() {
     "closeStartTimePicker"
   ).addEventListener(
     "click",
-    () =>
+    () => {
+
       el(
         "startTimePicker"
       ).classList.add(
         "hidden"
-      )
+      );
+
+    }
   );
 
 
@@ -2917,12 +3870,15 @@ function bindEvents() {
     "closeFinishTimePicker"
   ).addEventListener(
     "click",
-    () =>
+    () => {
+
       el(
         "finishTimePicker"
       ).classList.add(
         "hidden"
-      )
+      );
+
+    }
   );
 
 
@@ -2930,11 +3886,14 @@ function bindEvents() {
     "earlierStartBtn"
   ).addEventListener(
     "click",
-    () =>
+    () => {
+
       expandTimeRange(
         "start",
         -1
-      )
+      );
+
+    }
   );
 
 
@@ -2942,11 +3901,14 @@ function bindEvents() {
     "laterStartBtn"
   ).addEventListener(
     "click",
-    () =>
+    () => {
+
       expandTimeRange(
         "start",
         1
-      )
+      );
+
+    }
   );
 
 
@@ -2954,11 +3916,14 @@ function bindEvents() {
     "earlierFinishBtn"
   ).addEventListener(
     "click",
-    () =>
+    () => {
+
       expandTimeRange(
         "finish",
         -1
-      )
+      );
+
+    }
   );
 
 
@@ -2966,11 +3931,14 @@ function bindEvents() {
     "laterFinishBtn"
   ).addEventListener(
     "click",
-    () =>
+    () => {
+
       expandTimeRange(
         "finish",
         1
-      )
+      );
+
+    }
   );
 
 
@@ -2979,8 +3947,11 @@ function bindEvents() {
   ).addEventListener(
     "input",
     () => {
+
       clearPresetSelection();
+
       refreshEditorTotal();
+
     }
   );
 
@@ -2990,58 +3961,89 @@ function bindEvents() {
   ).addEventListener(
     "click",
     () => {
+
+      const fortnight =
+        getViewedFortnight();
+
+
       if (
-        editingIndex ===
-        null
+        !fortnight ||
+        editingIndex === null
       ) {
+
         return;
+
       }
+
 
       const value =
         editorValue();
 
-      if (
-        !value.start ||
-        !value.finish ||
-        timeToMin(
-          value.finish
-        ) <=
+
+      const start =
         timeToMin(
           value.start
-        )
-      ) {
-        el(
-          "dayWarning"
-        ).textContent =
-          "Choose a valid start and finish time.";
-
-        el(
-          "dayWarning"
-        ).classList.remove(
-          "hidden"
         );
+
+
+      const finish =
+        timeToMin(
+          value.finish
+        );
+
+
+      if (
+        start === null ||
+        finish === null ||
+        finish <= start
+      ) {
+
+        refreshEditorTotal();
 
         return;
+
       }
 
-      const viewed =
+
+      const updated =
         clone(
-          getViewedFortnight()
+          fortnight
         );
 
-      Object.assign(
-        viewed.days[
-          editingIndex
-        ],
-        value
-      );
+
+      updated.days[
+        editingIndex
+      ].start =
+        value.start;
+
+
+      updated.days[
+        editingIndex
+      ].finish =
+        value.finish;
+
+
+      updated.days[
+        editingIndex
+      ].break =
+        value.break;
+
+
+      updated.days[
+        editingIndex
+      ].note =
+        value.note;
+
 
       saveViewedFortnight(
-        viewed
+        updated
       );
 
+
       closeEditor();
+
       renderTracker();
+
     }
   );
 
@@ -3051,38 +4053,124 @@ function bindEvents() {
   ).addEventListener(
     "click",
     () => {
+
+      const fortnight =
+        getViewedFortnight();
+
+
       if (
-        editingIndex ===
-        null
+        !fortnight ||
+        editingIndex === null
       ) {
+
         return;
+
       }
 
-      const viewed =
+
+      const updated =
         clone(
-          getViewedFortnight()
+          fortnight
         );
 
-      Object.assign(
-        viewed.days[
-          editingIndex
-        ],
-        {
-          start: "",
-          finish: "",
-          break: 30,
-          note: ""
-        }
-      );
+
+      updated.days[
+        editingIndex
+      ].start =
+        "";
+
+
+      updated.days[
+        editingIndex
+      ].finish =
+        "";
+
+
+      updated.days[
+        editingIndex
+      ].break =
+        30;
+
+
+      updated.days[
+        editingIndex
+      ].note =
+        "";
+
 
       saveViewedFortnight(
-        viewed
+        updated
       );
 
+
       closeEditor();
+
       renderTracker();
+
     }
   );
+
+
+  /*
+    Tap backdrop to close sheets.
+  */
+
+  el(
+    "editorSheet"
+  ).addEventListener(
+    "click",
+    event => {
+
+      if (
+        event.target ===
+        el("editorSheet")
+      ) {
+
+        closeEditor();
+
+      }
+
+    }
+  );
+
+
+  el(
+    "nwdSheet"
+  ).addEventListener(
+    "click",
+    event => {
+
+      if (
+        event.target ===
+        el("nwdSheet")
+      ) {
+
+        closeNwdPicker();
+
+      }
+
+    }
+  );
+
+
+  el(
+    "resetSheet"
+  ).addEventListener(
+    "click",
+    event => {
+
+      if (
+        event.target ===
+        el("resetSheet")
+      ) {
+
+        closeResetSheet();
+
+      }
+
+    }
+  );
+
 }
 
 
@@ -3096,20 +4184,24 @@ persistHistory();
 bindEvents();
 renderShell();
 
+
 if (
   "serviceWorker" in navigator
 ) {
+
   window.addEventListener(
     "load",
     () => {
-      navigator
-        .serviceWorker
+
+      navigator.serviceWorker
         .register(
           "./sw.js"
         )
         .catch(
           () => {}
         );
+
     }
   );
+
 }
