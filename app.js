@@ -923,6 +923,12 @@ function getDashboardFortnight() {
   }
 
 
+  /*
+    First preference:
+    the established fortnight
+    containing today.
+  */
+
   const actualCurrentStart =
     getActualCurrentStart();
 
@@ -941,6 +947,40 @@ function getDashboardFortnight() {
 
   }
 
+
+  /*
+    If today is before the next
+    established fortnight, use the
+    nearest upcoming fortnight rather
+    than the furthest one created.
+  */
+
+  const today =
+    localISO(
+      new Date()
+    );
+
+
+  const collection =
+    allFortnights();
+
+
+  const firstFuture =
+    collection.find(
+      fortnight =>
+        fortnight.start > today
+    );
+
+
+  if (firstFuture) {
+    return firstFuture;
+  }
+
+
+  /*
+    Otherwise fall back to the
+    latest established fortnight.
+  */
 
   return currentState;
 
@@ -996,14 +1036,37 @@ function buildDashboardPayload() {
       : 0;
 
 
+  /*
+    Send every NWD that has actually
+    been established in the tracker.
+
+    This preserves one-off moved NWDs
+    because it reads the saved off flag
+    rather than calculating Fridays.
+  */
+
   const nonWorkingDates =
-    fortnight.days
-      .filter(
-        day => day.off
+    allFortnights()
+      .flatMap(
+        item =>
+          item.days
+            .filter(
+              day => day.off
+            )
+            .map(
+              day => day.date
+            )
       )
-      .map(
-        day => day.date
-      );
+      .filter(
+        (
+          date,
+          index,
+          values
+        ) =>
+          values.indexOf(date) ===
+          index
+      )
+      .sort();
 
 
   return {
@@ -1368,7 +1431,21 @@ async function syncDashboard(
   }
 
 
-  readDashboardSyncFields();
+  /*
+    Manual sync reads the visible
+    settings fields first.
+
+    Automatic sync deliberately uses
+    the stored settings so hidden,
+    unrendered password fields cannot
+    overwrite saved credentials.
+  */
+
+  if (manual) {
+
+    readDashboardSyncFields();
+
+  }
 
 
   if (
