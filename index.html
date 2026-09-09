@@ -42,7 +42,7 @@
 
   <link
     rel="stylesheet"
-    href="./styles.css?v=8"
+    href="./styles.css?v=9"
   >
 </head>
 
@@ -521,6 +521,23 @@
 
             <span>
               Return to current fortnight
+            </span>
+
+            <span class="action-arrow">
+              ›
+            </span>
+
+          </button>
+
+
+          <button
+            id="resetTrackerBtn"
+            class="action-row danger-action"
+            type="button"
+          >
+
+            <span>
+              Reset tracker
             </span>
 
             <span class="action-arrow">
@@ -1029,7 +1046,190 @@
   </div>
 
 
-  <script src="./app.js?v=8"></script>
+  <!-- RESET TRACKER -->
+
+  <div
+    id="resetSheet"
+    class="sheet-backdrop hidden"
+  >
+
+    <section
+      id="resetPanel"
+      class="sheet"
+    >
+
+      <div class="sheet-handle"></div>
+
+
+      <header class="sheet-header">
+
+        <button
+          id="closeReset"
+          class="back-btn"
+          type="button"
+        >
+          ‹ Back
+        </button>
+
+
+        <div class="sheet-title">
+
+          <div class="section-label">
+            Tracker settings
+          </div>
+
+          <h2>
+            Reset tracker
+          </h2>
+
+        </div>
+
+      </header>
+
+
+      <div class="reset-intro">
+
+        <p>
+          Start again with a new fortnight
+          cycle.
+        </p>
+
+        <p class="muted">
+          Choose the Monday that starts Week 1
+          and your normal Friday off.
+        </p>
+
+      </div>
+
+
+      <div class="reset-warning">
+
+        <strong>
+          This will remove your saved tracker data.
+        </strong>
+
+        <p>
+          All logged hours and saved fortnights
+          will be deleted. This cannot be undone.
+        </p>
+
+      </div>
+
+
+      <label class="field-label gap-top">
+        Week 1 starts
+      </label>
+
+
+      <div class="date-row">
+
+        <button
+          id="resetPrevMonday"
+          class="square-btn"
+          type="button"
+          aria-label="Previous week"
+        >
+          ‹
+        </button>
+
+
+        <button
+          id="resetStartDateButton"
+          class="date-button"
+          type="button"
+        >
+        </button>
+
+
+        <button
+          id="resetNextMonday"
+          class="square-btn"
+          type="button"
+          aria-label="Next week"
+        >
+          ›
+        </button>
+
+
+        <input
+          id="resetStartDateNative"
+          class="visually-hidden-date"
+          type="date"
+        >
+
+      </div>
+
+
+      <label class="field-label gap-top">
+        Normal Friday off
+      </label>
+
+
+      <div class="choice-grid">
+
+        <button
+          class="reset-choice-btn choice-btn"
+          data-reset-off="week1"
+          type="button"
+        >
+
+          <span class="choice-title">
+            Week 1 Friday
+          </span>
+
+          <span
+            id="resetWeek1FridayLabel"
+            class="choice-date"
+          >
+          </span>
+
+        </button>
+
+
+        <button
+          class="reset-choice-btn choice-btn selected"
+          data-reset-off="week2"
+          type="button"
+        >
+
+          <span class="choice-title">
+            Week 2 Friday
+          </span>
+
+          <span
+            id="resetWeek2FridayLabel"
+            class="choice-date"
+          >
+          </span>
+
+        </button>
+
+      </div>
+
+
+      <button
+        id="confirmResetBtn"
+        class="primary-btn reset-confirm-btn"
+        type="button"
+      >
+        Reset and start again
+      </button>
+
+
+      <button
+        id="cancelResetBtn"
+        class="text-btn"
+        type="button"
+      >
+        Cancel
+      </button>
+
+    </section>
+
+  </div>
+
+
+  <script src="./app.js?v=9"></script>
 
 </body>
 </html>
