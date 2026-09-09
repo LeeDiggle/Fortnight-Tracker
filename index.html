@@ -42,7 +42,7 @@
 
   <link
     rel="stylesheet"
-    href="./styles.css?v=9"
+    href="./styles.css?v=10"
   >
 </head>
 
@@ -521,6 +521,23 @@
 
             <span>
               Return to current fortnight
+            </span>
+
+            <span class="action-arrow">
+              ›
+            </span>
+
+          </button>
+
+
+          <button
+            id="dashboardSyncBtn"
+            class="action-row"
+            type="button"
+          >
+
+            <span>
+              Dashboard sync
             </span>
 
             <span class="action-arrow">
@@ -1046,6 +1063,170 @@
   </div>
 
 
+  <!-- DASHBOARD SYNC -->
+
+  <div
+    id="dashboardSyncSheet"
+    class="sheet-backdrop hidden"
+  >
+
+    <section
+      id="dashboardSyncPanel"
+      class="sheet"
+    >
+
+      <div class="sheet-handle"></div>
+
+
+      <header class="sheet-header">
+
+        <button
+          id="closeDashboardSync"
+          class="back-btn"
+          type="button"
+        >
+          ‹ Back
+        </button>
+
+
+        <div class="sheet-title">
+
+          <div class="section-label">
+            Tracker settings
+          </div>
+
+          <h2>
+            Dashboard sync
+          </h2>
+
+        </div>
+
+      </header>
+
+
+      <div class="sync-intro">
+
+        <p>
+          Send the current fortnight summary
+          to the Family Hallway Dashboard.
+        </p>
+
+        <p class="muted">
+          Hours and non-working days remain
+          managed by this tracker.
+        </p>
+
+      </div>
+
+
+      <div class="sync-security-note">
+
+        <strong>
+          Connection details stay on this device.
+        </strong>
+
+        <p>
+          Your dashboard key and Sites access token
+          are stored locally and are not included
+          in the GitHub source code.
+        </p>
+
+      </div>
+
+
+      <label
+        class="field-label gap-top"
+        for="dashboardEndpoint"
+      >
+        Dashboard endpoint
+      </label>
+
+      <input
+        id="dashboardEndpoint"
+        class="text-input sync-input"
+        type="url"
+        value="https://family-hallway-dashboard.humble-earth-9250.chatgpt.site/api/hours"
+        autocomplete="off"
+        autocapitalize="none"
+        spellcheck="false"
+      >
+
+
+      <label
+        class="field-label gap-top"
+        for="dashboardConnectionKey"
+      >
+        Dashboard connection key
+      </label>
+
+      <input
+        id="dashboardConnectionKey"
+        class="text-input sync-input"
+        type="password"
+        placeholder="Enter connection key"
+        autocomplete="off"
+        autocapitalize="none"
+        spellcheck="false"
+      >
+
+
+      <label
+        class="field-label gap-top"
+        for="dashboardSitesToken"
+      >
+        Sites access token
+      </label>
+
+      <input
+        id="dashboardSitesToken"
+        class="text-input sync-input"
+        type="password"
+        placeholder="Enter temporary access token"
+        autocomplete="off"
+        autocapitalize="none"
+        spellcheck="false"
+      >
+
+
+      <div class="sync-status-card">
+
+        <div>
+
+          <span class="sync-status-label">
+            Last successful sync
+          </span>
+
+          <strong id="dashboardSyncLast">
+            Never
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <div
+        id="dashboardSyncStatus"
+        class="sync-message hidden"
+        role="status"
+        aria-live="polite"
+      >
+      </div>
+
+
+      <button
+        id="syncDashboardBtn"
+        class="primary-btn"
+        type="button"
+      >
+        Sync dashboard
+      </button>
+
+    </section>
+
+  </div>
+
+
   <!-- RESET TRACKER -->
 
   <div
@@ -1229,7 +1410,7 @@
   </div>
 
 
-  <script src="./app.js?v=9"></script>
+  <script src="./app.js?v=10"></script>
 
 </body>
 </html>
