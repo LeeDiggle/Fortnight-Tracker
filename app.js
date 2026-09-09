@@ -3,6 +3,14 @@ const TARGET = 75 * 60;
 const CURRENT_KEY = "fortnightTracker.v3";
 const HISTORY_KEY = "fortnightTracker.history.v1";
 
+const DASHBOARD_SYNC_KEY =
+  "fortnightTracker.dashboardSync.v1";
+
+const DEFAULT_DASHBOARD_ENDPOINT =
+  "https://family-hallway-dashboard.humble-earth-9250.chatgpt.site/api/hours";
+
+const DASHBOARD_SYNC_DEBOUNCE_MS = 900;
+
 const LEGACY_CURRENT_KEYS = [
   "fortnightTracker.v4",
   "fortnightTracker.v2",
@@ -750,6 +758,107 @@ let pendingNwdIndex = null;
 
 
 /* =========================
+   DASHBOARD SYNC STORAGE
+========================= */
+
+function defaultDashboardSyncSettings() {
+
+  return {
+    endpoint:
+      DEFAULT_DASHBOARD_ENDPOINT,
+    connectionKey: "",
+    sitesToken: "",
+    lastSuccessfulSync: ""
+  };
+
+}
+
+
+function loadDashboardSyncSettings() {
+
+  const defaults =
+    defaultDashboardSyncSettings();
+
+
+  try {
+
+    const stored =
+      localStorage.getItem(
+        DASHBOARD_SYNC_KEY
+      );
+
+
+    if (!stored) {
+      return defaults;
+    }
+
+
+    const parsed =
+      JSON.parse(stored);
+
+
+    if (
+      !parsed ||
+      typeof parsed !== "object"
+    ) {
+
+      return defaults;
+
+    }
+
+
+    return {
+
+      endpoint:
+        typeof parsed.endpoint ===
+        "string" &&
+        parsed.endpoint.trim()
+          ? parsed.endpoint.trim()
+          : defaults.endpoint,
+
+      connectionKey:
+        typeof parsed.connectionKey ===
+        "string"
+          ? parsed.connectionKey
+          : "",
+
+      sitesToken:
+        typeof parsed.sitesToken ===
+        "string"
+          ? parsed.sitesToken
+          : "",
+
+      lastSuccessfulSync:
+        typeof parsed.lastSuccessfulSync ===
+        "string"
+          ? parsed.lastSuccessfulSync
+          : ""
+
+    };
+
+  } catch (error) {
+
+    return defaults;
+
+  }
+
+}
+
+
+let dashboardSyncSettings =
+  loadDashboardSyncSettings();
+
+
+let dashboardSyncTimer = null;
+let dashboardSyncInFlight = false;
+
+let dashboardSyncMessage = {
+  type: "",
+  text: ""
+};
+
+
+/* =========================
    SETUP STATE
 ========================= */
 
@@ -776,6 +885,712 @@ let resetOffWeek = 2;
 
 
 /* =========================
+   DASHBOARD SYNC HELPERS
+========================= */
+
+function persistDashboardSyncSettings() {
+
+  localStorage.setItem(
+    DASHBOARD_SYNC_KEY,
+    JSON.stringify(
+      dashboardSyncSettings
+    )
+  );
+
+}
+
+
+function dashboardSyncConfigured() {
+
+  return Boolean(
+    dashboardSyncSettings.endpoint &&
+    dashboardSyncSettings.connectionKey &&
+    dashboardSyncSettings.sitesToken
+  );
+
+}
+
+
+function getDashboardFortnight() {
+
+  if (
+    !currentState ||
+    currentState.configured === false
+  ) {
+
+    return null;
+
+  }
+
+
+  const actualCurrentStart =
+    getActualCurrentStart();
+
+
+  if (actualCurrentStart) {
+
+    const actualCurrent =
+      getFortnightByStart(
+        actualCurrentStart
+      );
+
+
+    if (actualCurrent) {
+      return actualCurrent;
+    }
+
+  }
+
+
+  return currentState;
+
+}
+
+
+function buildDashboardPayload() {
+
+  const fortnight =
+    getDashboardFortnight();
+
+
+  if (!fortnight) {
+    return null;
+  }
+
+
+  const loggedMinutes =
+    fortnight.days.reduce(
+      (sum, day) =>
+        sum +
+        paidMinutes(day),
+      0
+    );
+
+
+  const remainingMinutes =
+    Math.max(
+      0,
+      TARGET -
+      loggedMinutes
+    );
+
+
+  const today =
+    localISO(
+      new Date()
+    );
+
+
+  const remainingWorkingDays =
+    fortnight.days.filter(
+      day =>
+        !day.off &&
+        day.date >= today
+    ).length;
+
+
+  const averageMinutesNeeded =
+    remainingWorkingDays > 0
+      ? remainingMinutes /
+        remainingWorkingDays
+      : 0;
+
+
+  const nonWorkingDates =
+    fortnight.days
+      .filter(
+        day => day.off
+      )
+      .map(
+        day => day.date
+      );
+
+
+  return {
+
+    version: 1,
+
+    fortnightStart:
+      fortnight.start,
+
+    fortnightEnd:
+      addDays(
+        fortnight.start,
+        13
+      ),
+
+    targetMinutes:
+      TARGET,
+
+    loggedMinutes,
+
+    remainingMinutes,
+
+    percentage:
+      TARGET > 0
+        ? (
+            loggedMinutes /
+            TARGET
+          ) * 100
+        : 0,
+
+    remainingWorkingDays,
+
+    averageMinutesNeeded,
+
+    nonWorkingDates
+
+  };
+
+}
+
+
+function formatDashboardSyncTime(
+  value
+) {
+
+  if (!value) {
+    return "Never";
+  }
+
+
+  const date =
+    new Date(value);
+
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+
+    return "Never";
+
+  }
+
+
+  return new Intl.DateTimeFormat(
+    "en-GB",
+    {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    }
+  ).format(date);
+
+}
+
+
+function renderDashboardSyncStatus() {
+
+  const last =
+    el(
+      "dashboardSyncLast"
+    );
+
+
+  const status =
+    el(
+      "dashboardSyncStatus"
+    );
+
+
+  if (last) {
+
+    last.textContent =
+      formatDashboardSyncTime(
+        dashboardSyncSettings
+          .lastSuccessfulSync
+      );
+
+  }
+
+
+  if (!status) {
+    return;
+  }
+
+
+  status.className =
+    "sync-message hidden";
+
+
+  status.textContent = "";
+
+
+  if (
+    !dashboardSyncMessage.text
+  ) {
+
+    return;
+
+  }
+
+
+  status.textContent =
+    dashboardSyncMessage.text;
+
+
+  status.classList.remove(
+    "hidden"
+  );
+
+
+  if (
+    dashboardSyncMessage.type ===
+    "success"
+  ) {
+
+    status.classList.add(
+      "success"
+    );
+
+  } else if (
+    dashboardSyncMessage.type ===
+    "failure"
+  ) {
+
+    status.classList.add(
+      "failure"
+    );
+
+  }
+
+}
+
+
+function readDashboardSyncFields() {
+
+  const endpointField =
+    el(
+      "dashboardEndpoint"
+    );
+
+
+  const keyField =
+    el(
+      "dashboardConnectionKey"
+    );
+
+
+  const tokenField =
+    el(
+      "dashboardSitesToken"
+    );
+
+
+  if (
+    endpointField
+  ) {
+
+    dashboardSyncSettings.endpoint =
+      endpointField.value.trim();
+
+  }
+
+
+  if (
+    keyField
+  ) {
+
+    dashboardSyncSettings.connectionKey =
+      keyField.value.trim();
+
+  }
+
+
+  if (
+    tokenField
+  ) {
+
+    dashboardSyncSettings.sitesToken =
+      tokenField.value.trim();
+
+  }
+
+
+  persistDashboardSyncSettings();
+
+}
+
+
+function renderDashboardSyncFields() {
+
+  const endpointField =
+    el(
+      "dashboardEndpoint"
+    );
+
+
+  const keyField =
+    el(
+      "dashboardConnectionKey"
+    );
+
+
+  const tokenField =
+    el(
+      "dashboardSitesToken"
+    );
+
+
+  if (endpointField) {
+
+    endpointField.value =
+      dashboardSyncSettings.endpoint ||
+      DEFAULT_DASHBOARD_ENDPOINT;
+
+  }
+
+
+  if (keyField) {
+
+    keyField.value =
+      dashboardSyncSettings.connectionKey ||
+      "";
+
+  }
+
+
+  if (tokenField) {
+
+    tokenField.value =
+      dashboardSyncSettings.sitesToken ||
+      "";
+
+  }
+
+
+  renderDashboardSyncStatus();
+
+}
+
+
+function openDashboardSyncSheet() {
+
+  renderDashboardSyncFields();
+
+
+  el(
+    "dashboardSyncSheet"
+  ).classList.remove(
+    "hidden"
+  );
+
+
+  el(
+    "dashboardSyncPanel"
+  ).scrollTop = 0;
+
+}
+
+
+function closeDashboardSyncSheet() {
+
+  readDashboardSyncFields();
+
+
+  el(
+    "dashboardSyncSheet"
+  ).classList.add(
+    "hidden"
+  );
+
+}
+
+
+function scheduleDashboardSync() {
+
+  if (
+    dashboardSyncTimer
+  ) {
+
+    clearTimeout(
+      dashboardSyncTimer
+    );
+
+  }
+
+
+  dashboardSyncTimer =
+    setTimeout(
+      () => {
+
+        dashboardSyncTimer =
+          null;
+
+
+        if (
+          !dashboardSyncConfigured()
+        ) {
+
+          return;
+
+        }
+
+
+        syncDashboard({
+          manual: false
+        });
+
+      },
+      DASHBOARD_SYNC_DEBOUNCE_MS
+    );
+
+}
+
+
+async function syncDashboard(
+  {
+    manual = false
+  } = {}
+) {
+
+  if (dashboardSyncInFlight) {
+
+    if (manual) {
+
+      dashboardSyncMessage = {
+        type: "",
+        text:
+          "A dashboard sync is already in progress."
+      };
+
+
+      renderDashboardSyncStatus();
+
+    }
+
+    return;
+
+  }
+
+
+  readDashboardSyncFields();
+
+
+  if (
+    !dashboardSyncSettings.endpoint
+  ) {
+
+    if (manual) {
+
+      dashboardSyncMessage = {
+        type: "failure",
+        text:
+          "Enter the dashboard endpoint before syncing."
+      };
+
+
+      renderDashboardSyncStatus();
+
+    }
+
+    return;
+
+  }
+
+
+  if (
+    !dashboardSyncSettings.connectionKey ||
+    !dashboardSyncSettings.sitesToken
+  ) {
+
+    if (manual) {
+
+      dashboardSyncMessage = {
+        type: "failure",
+        text:
+          "Enter the dashboard connection key and Sites access token before syncing."
+      };
+
+
+      renderDashboardSyncStatus();
+
+    }
+
+    return;
+
+  }
+
+
+  const payload =
+    buildDashboardPayload();
+
+
+  if (!payload) {
+
+    if (manual) {
+
+      dashboardSyncMessage = {
+        type: "failure",
+        text:
+          "There is no configured fortnight to send yet."
+      };
+
+
+      renderDashboardSyncStatus();
+
+    }
+
+    return;
+
+  }
+
+
+  dashboardSyncInFlight =
+    true;
+
+
+  const button =
+    el(
+      "syncDashboardBtn"
+    );
+
+
+  if (button) {
+
+    button.disabled = true;
+
+    button.textContent =
+      "Syncing…";
+
+  }
+
+
+  if (manual) {
+
+    dashboardSyncMessage = {
+      type: "",
+      text:
+        "Sending current fortnight to the hallway dashboard…"
+    };
+
+
+    renderDashboardSyncStatus();
+
+  }
+
+
+  try {
+
+    const response =
+      await fetch(
+        dashboardSyncSettings.endpoint,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+
+            "X-Dashboard-Key":
+              dashboardSyncSettings
+                .connectionKey,
+
+            "OAI-Sites-Authorization":
+              `Bearer ${dashboardSyncSettings.sitesToken}`
+          },
+
+          body:
+            JSON.stringify(
+              payload
+            )
+        }
+      );
+
+
+    if (!response.ok) {
+
+      let detail = "";
+
+
+      try {
+
+        const text =
+          await response.text();
+
+
+        if (text) {
+
+          detail =
+            ` ${text.slice(
+              0,
+              180
+            )}`;
+
+        }
+
+      } catch (error) {
+        // Response body is optional.
+      }
+
+
+      throw new Error(
+        `Dashboard returned ${response.status}.${detail}`
+      );
+
+    }
+
+
+    dashboardSyncSettings
+      .lastSuccessfulSync =
+        new Date().toISOString();
+
+
+    persistDashboardSyncSettings();
+
+
+    dashboardSyncMessage = {
+      type: "success",
+      text:
+        "Dashboard synced successfully."
+    };
+
+
+    renderDashboardSyncStatus();
+
+  } catch (error) {
+
+    const message =
+      error &&
+      error.message
+        ? error.message
+        : "Unable to reach the dashboard.";
+
+
+    dashboardSyncMessage = {
+      type: "failure",
+      text:
+        `Dashboard sync failed. Your tracker data is still saved locally. ${message}`
+    };
+
+
+    renderDashboardSyncStatus();
+
+  } finally {
+
+    dashboardSyncInFlight =
+      false;
+
+
+    if (button) {
+
+      button.disabled = false;
+
+      button.textContent =
+        "Sync dashboard";
+
+    }
+
+  }
+
+}
+
+
+/* =========================
    PERSISTENCE
 ========================= */
 
@@ -788,6 +1603,9 @@ function persistCurrent() {
     )
   );
 
+
+  scheduleDashboardSync();
+
 }
 
 
@@ -799,6 +1617,9 @@ function persistHistory() {
       history
     )
   );
+
+
+  scheduleDashboardSync();
 
 }
 
@@ -1374,6 +2195,9 @@ function performTrackerReset() {
   /*
     Remove all tracker records,
     including legacy versions.
+
+    Dashboard connection settings
+    are deliberately retained.
   */
 
   localStorage.removeItem(
@@ -3579,6 +4403,76 @@ function bindEvents() {
 
 
   /*
+    Dashboard sync
+  */
+
+  el(
+    "dashboardSyncBtn"
+  ).addEventListener(
+    "click",
+    openDashboardSyncSheet
+  );
+
+
+  el(
+    "closeDashboardSync"
+  ).addEventListener(
+    "click",
+    closeDashboardSyncSheet
+  );
+
+
+  el(
+    "dashboardEndpoint"
+  ).addEventListener(
+    "input",
+    () => {
+
+      readDashboardSyncFields();
+
+    }
+  );
+
+
+  el(
+    "dashboardConnectionKey"
+  ).addEventListener(
+    "input",
+    () => {
+
+      readDashboardSyncFields();
+
+    }
+  );
+
+
+  el(
+    "dashboardSitesToken"
+  ).addEventListener(
+    "input",
+    () => {
+
+      readDashboardSyncFields();
+
+    }
+  );
+
+
+  el(
+    "syncDashboardBtn"
+  ).addEventListener(
+    "click",
+    () => {
+
+      syncDashboard({
+        manual: true
+      });
+
+    }
+  );
+
+
+  /*
     Reset tracker
   */
 
@@ -4146,6 +5040,25 @@ function bindEvents() {
       ) {
 
         closeNwdPicker();
+
+      }
+
+    }
+  );
+
+
+  el(
+    "dashboardSyncSheet"
+  ).addEventListener(
+    "click",
+    event => {
+
+      if (
+        event.target ===
+        el("dashboardSyncSheet")
+      ) {
+
+        closeDashboardSyncSheet();
 
       }
 
