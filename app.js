@@ -905,8 +905,30 @@ function dashboardSyncConfigured() {
   return Boolean(
     dashboardSyncSettings.endpoint &&
     dashboardSyncSettings.connectionKey &&
-    dashboardSyncSettings.sitesToken
+    (
+      !dashboardUsesSitesAccess() ||
+      dashboardSyncSettings.sitesToken
+    )
   );
+
+}
+
+
+function dashboardUsesSitesAccess() {
+
+  try {
+
+    return new URL(
+      dashboardSyncSettings.endpoint
+    ).hostname.endsWith(
+      ".chatgpt.site"
+    );
+
+  } catch (error) {
+
+    return false;
+
+  }
 
 }
 
@@ -1472,7 +1494,10 @@ async function syncDashboard(
 
   if (
     !dashboardSyncSettings.connectionKey ||
-    !dashboardSyncSettings.sitesToken
+    (
+      dashboardUsesSitesAccess() &&
+      !dashboardSyncSettings.sitesToken
+    )
   ) {
 
     if (manual) {
@@ -1480,7 +1505,9 @@ async function syncDashboard(
       dashboardSyncMessage = {
         type: "failure",
         text:
-          "Enter the dashboard connection key and Sites access token before syncing."
+          dashboardUsesSitesAccess()
+            ? "Enter the dashboard connection key and Sites access token before syncing."
+            : "Enter the dashboard connection key before syncing."
       };
 
 
@@ -1559,16 +1586,22 @@ async function syncDashboard(
         {
           method: "POST",
 
-          headers: {
-            "Content-Type":
-              "application/json",
+           headers: {
+             "Content-Type":
+               "application/json",
 
-            "X-Dashboard-Key":
-              dashboardSyncSettings
-                .connectionKey,
+             "X-Dashboard-Key":
+               dashboardSyncSettings
+                 .connectionKey,
 
-            "OAI-Sites-Authorization":
-              `Bearer ${dashboardSyncSettings.sitesToken}`
+             ...(
+               dashboardUsesSitesAccess()
+                 ? {
+                     "OAI-Sites-Authorization":
+                       `Bearer ${dashboardSyncSettings.sitesToken}`
+                   }
+                 : {}
+             )
           },
 
           body:
