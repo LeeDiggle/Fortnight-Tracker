@@ -234,6 +234,22 @@ h3{
   margin-top:16px;
 }
 
+.secondary-btn{
+  width:100%;
+  border:1px solid rgba(255,134,20,.45);
+  border-radius:12px;
+  min-height:44px;
+  background:rgba(255,134,20,.08);
+  color:var(--orange);
+  font-weight:850;
+  font-size:14px;
+  margin-top:12px;
+}
+
+.secondary-btn:active{
+  background:rgba(255,134,20,.15);
+}
+
 .text-btn{
   width:100%;
   border:0;
@@ -553,6 +569,44 @@ h3{
   font-weight:650;
 }
 
+
+/* WEEK TOTALS */
+
+.week-total-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:10px;
+}
+
+.week-total{
+  min-height:46px;
+  border:1px solid var(--line);
+  background:rgba(10,12,15,.5);
+  border-radius:12px;
+  padding:8px 10px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.week-total span{
+  color:#8f97a3;
+  font-size:10px;
+  font-weight:750;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+
+.week-total strong{
+  color:var(--orange);
+  font-size:15px;
+  line-height:1;
+  font-weight:850;
+  white-space:nowrap;
+}
+
 .legend{
   display:flex;
   gap:12px;
@@ -736,38 +790,50 @@ h3{
   margin-bottom:16px;
 }
 
-.quick-preset-row{
-  display:flex;
+
+/* DAY DETAILS */
+
+.day-detail-block{
+  margin-top:10px;
+}
+
+.day-detail-block + .day-detail-block{
+  margin-top:13px;
+}
+
+.day-detail-label{
+  color:#c6cbd2;
+  font-size:13px;
+  font-weight:750;
+  margin-bottom:7px;
+}
+
+.segmented-choice{
+  display:grid;
+  grid-template-columns:1fr 1fr;
   gap:7px;
-  overflow-x:auto;
-  padding-top:8px;
-  padding-bottom:2px;
-  scrollbar-width:none;
-  -webkit-overflow-scrolling:touch;
 }
 
-.quick-preset-row::-webkit-scrollbar{
-  display:none;
-}
-
-.quick-preset{
-  flex:0 0 auto;
-  min-height:36px;
+.segment-btn{
+  min-height:44px;
   border:1px solid var(--line);
   background:var(--panel2);
   color:var(--text);
-  border-radius:999px;
-  padding:0 12px;
-  font-size:12px;
-  font-weight:750;
-  white-space:nowrap;
+  border-radius:11px;
+  font-size:13px;
+  font-weight:800;
 }
 
-.quick-preset.selected{
+.segment-btn.selected{
   background:var(--orange);
   border-color:var(--orange);
   color:#111;
 }
+
+.segment-btn:active:not(.selected){
+  background:#292e36;
+}
+
 
 .time-entry-section{
   border-top:1px solid var(--line);
@@ -1192,6 +1258,46 @@ h3{
 
 
 /* =========================
+   EXPORT / BACKUP
+========================= */
+
+.export-intro{
+  margin-bottom:14px;
+}
+
+.export-intro p{
+  margin-bottom:5px;
+  line-height:1.45;
+}
+
+.export-intro .muted{
+  font-size:13px;
+}
+
+.export-option-card{
+  border:1px solid var(--line);
+  background:var(--panel3);
+  border-radius:14px;
+  padding:13px;
+  margin-top:10px;
+}
+
+.export-option-card strong{
+  display:block;
+  font-size:15px;
+  line-height:1.25;
+  color:var(--text);
+}
+
+.export-option-card p{
+  margin:5px 0 0;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.45;
+}
+
+
+/* =========================
    RESET TRACKER
 ========================= */
 
@@ -1337,6 +1443,23 @@ h3{
     font-size:13px;
   }
 
+  .week-total{
+    padding:8px;
+  }
+
+  .week-total span{
+    font-size:9px;
+  }
+
+  .week-total strong{
+    font-size:14px;
+  }
+
+  .segment-btn{
+    min-height:42px;
+    font-size:12px;
+  }
+
   .time-picker-grid{
     grid-template-columns:repeat(4,1fr);
     gap:5px;
@@ -1368,13 +1491,5 @@ h3{
 
   .sync-status-card strong{
     text-align:left;
-  }
-}
-
-@media(min-width:650px){
-
-  .quick-preset-row{
-    overflow:visible;
-    flex-wrap:wrap;
   }
 }
