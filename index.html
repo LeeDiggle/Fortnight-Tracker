@@ -42,7 +42,7 @@
 
   <link
     rel="stylesheet"
-    href="./styles.css?v=10"
+    href="./styles.css?v=11"
   >
 </head>
 
@@ -425,6 +425,35 @@
         </div>
 
 
+        <div class="week-total-row">
+
+          <div class="week-total">
+
+            <span>
+              Week 1
+            </span>
+
+            <strong id="week1Total">
+              0h 00m
+            </strong>
+
+          </div>
+
+          <div class="week-total">
+
+            <span>
+              Week 2
+            </span>
+
+            <strong id="week2Total">
+              0h 00m
+            </strong>
+
+          </div>
+
+        </div>
+
+
         <div class="legend">
 
           <span>
@@ -548,6 +577,23 @@
 
 
           <button
+            id="exportTrackerBtn"
+            class="action-row"
+            type="button"
+          >
+
+            <span>
+              Export tracker data
+            </span>
+
+            <span class="action-arrow">
+              ›
+            </span>
+
+          </button>
+
+
+          <button
             id="resetTrackerBtn"
             class="action-row danger-action"
             type="button"
@@ -651,55 +697,73 @@
       <div id="workDayPanel">
 
 
-        <!-- QUICK DAYS -->
+        <!-- DAY DETAILS -->
 
         <div class="editor-section">
 
           <div class="section-label">
-            Quick days
+            Day details
           </div>
 
-          <div class="quick-preset-row">
 
-            <button
-              class="quick-preset"
-              data-preset="monday"
-              type="button"
-            >
-              Mon gym
-            </button>
+          <div class="day-detail-block">
 
-            <button
-              class="quick-preset"
-              data-preset="office"
-              type="button"
-            >
-              Office
-            </button>
+            <div class="day-detail-label">
+              Location
+            </div>
 
-            <button
-              class="quick-preset"
-              data-preset="cycle"
-              type="button"
-            >
-              Cycle
-            </button>
+            <div class="segmented-choice">
 
-            <button
-              class="quick-preset"
-              data-preset="wfhLong"
-              type="button"
-            >
-              WFH long
-            </button>
+              <button
+                id="locationOfficeBtn"
+                class="segment-btn"
+                data-location="office"
+                type="button"
+              >
+                Office
+              </button>
 
-            <button
-              class="quick-preset"
-              data-preset="wfhGym"
-              type="button"
-            >
-              WFH + gym
-            </button>
+              <button
+                id="locationWfhBtn"
+                class="segment-btn"
+                data-location="wfh"
+                type="button"
+              >
+                WFH
+              </button>
+
+            </div>
+
+          </div>
+
+
+          <div class="day-detail-block">
+
+            <div class="day-detail-label">
+              Gym
+            </div>
+
+            <div class="segmented-choice">
+
+              <button
+                id="gymNoBtn"
+                class="segment-btn"
+                data-gym="false"
+                type="button"
+              >
+                No
+              </button>
+
+              <button
+                id="gymYesBtn"
+                class="segment-btn"
+                data-gym="true"
+                type="button"
+              >
+                Yes
+              </button>
+
+            </div>
 
           </div>
 
@@ -939,7 +1003,7 @@
           id="dayNote"
           class="text-input"
           type="text"
-          placeholder="Office, WFH, client meeting..."
+          placeholder="Client meeting, late start..."
         >
 
 
@@ -1221,6 +1285,127 @@
       >
         Sync dashboard
       </button>
+
+    </section>
+
+  </div>
+
+
+  <!-- EXPORT TRACKER DATA -->
+
+  <div
+    id="exportSheet"
+    class="sheet-backdrop hidden"
+  >
+
+    <section
+      id="exportPanel"
+      class="sheet"
+    >
+
+      <div class="sheet-handle"></div>
+
+
+      <header class="sheet-header">
+
+        <button
+          id="closeExport"
+          class="back-btn"
+          type="button"
+        >
+          ‹ Back
+        </button>
+
+
+        <div class="sheet-title">
+
+          <div class="section-label">
+            Tracker data
+          </div>
+
+          <h2>
+            Export & backup
+          </h2>
+
+        </div>
+
+      </header>
+
+
+      <div class="export-intro">
+
+        <p>
+          Keep a copy of your tracker history
+          outside this browser.
+        </p>
+
+        <p class="muted">
+          JSON is the full backup. CSV is useful
+          for Excel and longer-term analysis.
+        </p>
+
+      </div>
+
+
+      <div class="export-option-card">
+
+        <div>
+
+          <strong>
+            JSON backup
+          </strong>
+
+          <p>
+            Complete tracker history and settings
+            for future restore or migration.
+          </p>
+
+        </div>
+
+        <button
+          id="exportJsonBtn"
+          class="secondary-btn"
+          type="button"
+        >
+          Export JSON
+        </button>
+
+      </div>
+
+
+      <div class="export-option-card">
+
+        <div>
+
+          <strong>
+            CSV history
+          </strong>
+
+          <p>
+            One row per working day, including
+            hours, location, gym and notes.
+          </p>
+
+        </div>
+
+        <button
+          id="exportCsvBtn"
+          class="secondary-btn"
+          type="button"
+        >
+          Export CSV
+        </button>
+
+      </div>
+
+
+      <div
+        id="exportStatus"
+        class="sync-message hidden"
+        role="status"
+        aria-live="polite"
+      >
+      </div>
 
     </section>
 
