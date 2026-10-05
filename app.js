@@ -19,48 +19,8 @@ const LEGACY_CURRENT_KEYS = [
 
 
 /* =========================
-   PRESETS
+   EDITOR OPTIONS
 ========================= */
-
-const presets = {
-
-  monday: {
-    start: "07:30",
-    finish: "15:30",
-    break: 30,
-    note: "Mon gym"
-  },
-
-  office: {
-    start: "07:30",
-    finish: "16:30",
-    break: 30,
-    note: "Office"
-  },
-
-  cycle: {
-    start: "07:30",
-    finish: "16:00",
-    break: 30,
-    note: "Cycle / office"
-  },
-
-  wfhLong: {
-    start: "07:00",
-    finish: "16:30",
-    break: 30,
-    note: "WFH long"
-  },
-
-  wfhGym: {
-    start: "07:00",
-    finish: "16:30",
-    break: 90,
-    note: "WFH + gym"
-  }
-
-};
-
 
 const breakOptions = [
   30,
@@ -101,6 +61,9 @@ let finishRange = {
 let editorStart = "07:30";
 let editorFinish = "16:30";
 let editorBreak = 30;
+
+let editorLocation = "";
+let editorGym = null;
 
 
 /* =========================
@@ -510,6 +473,8 @@ function makeDays(
       start: "",
       finish: "",
       break: 30,
+      location: "",
+      gym: null,
       note: "",
       off: index === offIndex
     })
@@ -626,6 +591,17 @@ function normaliseFortnight(value) {
             )
               ? Number(day.break)
               : 30,
+
+          location:
+            day.location === "office" ||
+            day.location === "wfh"
+              ? day.location
+              : "",
+
+          gym:
+            typeof day.gym === "boolean"
+              ? day.gym
+              : null,
 
           note:
             day.note || "",
@@ -900,20 +876,6 @@ function persistDashboardSyncSettings() {
 }
 
 
-function dashboardSyncConfigured() {
-
-  return Boolean(
-    dashboardSyncSettings.endpoint &&
-    dashboardSyncSettings.connectionKey &&
-    (
-      !dashboardUsesSitesAccess() ||
-      dashboardSyncSettings.sitesToken
-    )
-  );
-
-}
-
-
 function dashboardUsesSitesAccess() {
 
   try {
@@ -933,6 +895,20 @@ function dashboardUsesSitesAccess() {
 }
 
 
+function dashboardSyncConfigured() {
+
+  return Boolean(
+    dashboardSyncSettings.endpoint &&
+    dashboardSyncSettings.connectionKey &&
+    (
+      !dashboardUsesSitesAccess() ||
+      dashboardSyncSettings.sitesToken
+    )
+  );
+
+}
+
+
 function getDashboardFortnight() {
 
   if (
@@ -944,12 +920,6 @@ function getDashboardFortnight() {
 
   }
 
-
-  /*
-    First preference:
-    the established fortnight
-    containing today.
-  */
 
   const actualCurrentStart =
     getActualCurrentStart();
@@ -969,13 +939,6 @@ function getDashboardFortnight() {
 
   }
 
-
-  /*
-    If today is before the next
-    established fortnight, use the
-    nearest upcoming fortnight rather
-    than the furthest one created.
-  */
 
   const today =
     localISO(
@@ -998,11 +961,6 @@ function getDashboardFortnight() {
     return firstFuture;
   }
 
-
-  /*
-    Otherwise fall back to the
-    latest established fortnight.
-  */
 
   return currentState;
 
@@ -1057,15 +1015,6 @@ function buildDashboardPayload() {
         remainingWorkingDays
       : 0;
 
-
-  /*
-    Send every NWD that has actually
-    been established in the tracker.
-
-    This preserves one-off moved NWDs
-    because it reads the saved off flag
-    rather than calculating Fridays.
-  */
 
   const nonWorkingDates =
     allFortnights()
@@ -1266,9 +1215,7 @@ function readDashboardSyncFields() {
     );
 
 
-  if (
-    endpointField
-  ) {
+  if (endpointField) {
 
     dashboardSyncSettings.endpoint =
       endpointField.value.trim();
@@ -1276,9 +1223,7 @@ function readDashboardSyncFields() {
   }
 
 
-  if (
-    keyField
-  ) {
+  if (keyField) {
 
     dashboardSyncSettings.connectionKey =
       keyField.value.trim();
@@ -1286,9 +1231,7 @@ function readDashboardSyncFields() {
   }
 
 
-  if (
-    tokenField
-  ) {
+  if (tokenField) {
 
     dashboardSyncSettings.sitesToken =
       tokenField.value.trim();
@@ -1453,16 +1396,6 @@ async function syncDashboard(
   }
 
 
-  /*
-    Manual sync reads the visible
-    settings fields first.
-
-    Automatic sync deliberately uses
-    the stored settings so hidden,
-    unrendered password fields cannot
-    overwrite saved credentials.
-  */
-
   if (manual) {
 
     readDashboardSyncFields();
@@ -1586,22 +1519,24 @@ async function syncDashboard(
         {
           method: "POST",
 
-           headers: {
-             "Content-Type":
-               "application/json",
+          headers: {
 
-             "X-Dashboard-Key":
-               dashboardSyncSettings
-                 .connectionKey,
+            "Content-Type":
+              "application/json",
 
-             ...(
-               dashboardUsesSitesAccess()
-                 ? {
-                     "OAI-Sites-Authorization":
-                       `Bearer ${dashboardSyncSettings.sitesToken}`
-                   }
-                 : {}
-             )
+            "X-Dashboard-Key":
+              dashboardSyncSettings
+                .connectionKey,
+
+            ...(
+              dashboardUsesSitesAccess()
+                ? {
+                    "OAI-Sites-Authorization":
+                      `Bearer ${dashboardSyncSettings.sitesToken}`
+                  }
+                : {}
+            )
+
           },
 
           body:
@@ -2051,6 +1986,401 @@ function saveViewedFortnight(
 
 
 /* =========================
+   EXPORT / BACKUP
+========================= */
+
+function openExportSheet() {
+
+  setExportStatus(
+    "",
+    ""
+  );
+
+
+  el(
+    "exportSheet"
+  ).classList.remove(
+    "hidden"
+  );
+
+
+  el(
+    "exportPanel"
+  ).scrollTop = 0;
+
+}
+
+
+function closeExportSheet() {
+
+  el(
+    "exportSheet"
+  ).classList.add(
+    "hidden"
+  );
+
+}
+
+
+function setExportStatus(
+  type,
+  text
+) {
+
+  const status =
+    el(
+      "exportStatus"
+    );
+
+
+  if (!status) {
+    return;
+  }
+
+
+  status.className =
+    "sync-message hidden";
+
+  status.textContent = "";
+
+
+  if (!text) {
+    return;
+  }
+
+
+  status.textContent =
+    text;
+
+
+  status.classList.remove(
+    "hidden"
+  );
+
+
+  if (type === "success") {
+
+    status.classList.add(
+      "success"
+    );
+
+  } else if (
+    type === "failure"
+  ) {
+
+    status.classList.add(
+      "failure"
+    );
+
+  }
+
+}
+
+
+function downloadTextFile(
+  filename,
+  text,
+  mimeType
+) {
+
+  const blob =
+    new Blob(
+      [text],
+      {
+        type: mimeType
+      }
+    );
+
+
+  const url =
+    URL.createObjectURL(
+      blob
+    );
+
+
+  const anchor =
+    document.createElement(
+      "a"
+    );
+
+
+  anchor.href = url;
+
+  anchor.download =
+    filename;
+
+
+  document.body.appendChild(
+    anchor
+  );
+
+
+  anchor.click();
+
+
+  anchor.remove();
+
+
+  setTimeout(
+    () => {
+
+      URL.revokeObjectURL(
+        url
+      );
+
+    },
+    1500
+  );
+
+}
+
+
+function exportJsonBackup() {
+
+  try {
+
+    const backup = {
+
+      version: 1,
+
+      exportedAt:
+        new Date().toISOString(),
+
+      targetMinutes:
+        TARGET,
+
+      currentState:
+        clone(
+          currentState
+        ),
+
+      history:
+        clone(
+          history
+        )
+
+    };
+
+
+    const filename =
+      `fortnight-tracker-backup-${localISO(
+        new Date()
+      )}.json`;
+
+
+    downloadTextFile(
+      filename,
+      JSON.stringify(
+        backup,
+        null,
+        2
+      ),
+      "application/json"
+    );
+
+
+    setExportStatus(
+      "success",
+      "JSON backup created. Dashboard connection credentials were not included."
+    );
+
+  } catch (error) {
+
+    setExportStatus(
+      "failure",
+      "Unable to create the JSON backup."
+    );
+
+  }
+
+}
+
+
+function csvEscape(value) {
+
+  const text =
+    value === null ||
+    value === undefined
+      ? ""
+      : String(value);
+
+
+  if (
+    text.includes(",") ||
+    text.includes('"') ||
+    text.includes("\n")
+  ) {
+
+    return (
+      `"${text.replace(
+        /"/g,
+        '""'
+      )}"`
+    );
+
+  }
+
+
+  return text;
+
+}
+
+
+function exportCsvHistory() {
+
+  try {
+
+    const rows = [
+
+      [
+        "fortnight_start",
+        "fortnight_end",
+        "week",
+        "date",
+        "weekday",
+        "start",
+        "finish",
+        "break_minutes",
+        "paid_minutes",
+        "paid_hours",
+        "location",
+        "gym",
+        "note"
+      ]
+
+    ];
+
+
+    allFortnights()
+      .forEach(
+        fortnight => {
+
+          fortnight.days
+            .forEach(
+              (
+                day,
+                index
+              ) => {
+
+                if (
+                  day.off ||
+                  !day.start ||
+                  !day.finish
+                ) {
+
+                  return;
+
+                }
+
+
+                const minutes =
+                  paidMinutes(
+                    day
+                  );
+
+
+                const weekday =
+                  fmtDate(
+                    day.date,
+                    {
+                      weekday:
+                        "long"
+                    }
+                  );
+
+
+                rows.push(
+                  [
+                    fortnight.start,
+                    addDays(
+                      fortnight.start,
+                      13
+                    ),
+                    index <= 4
+                      ? 1
+                      : 2,
+                    day.date,
+                    weekday,
+                    day.start,
+                    day.finish,
+                    Number(
+                      day.break || 0
+                    ),
+                    minutes,
+                    (
+                      minutes / 60
+                    ).toFixed(2),
+                    day.location || "",
+                    typeof day.gym ===
+                      "boolean"
+                      ? (
+                          day.gym
+                            ? "Yes"
+                            : "No"
+                        )
+                      : "",
+                    day.note || ""
+                  ]
+                );
+
+              }
+            );
+
+        }
+      );
+
+
+    const csv =
+      rows
+        .map(
+          row =>
+            row
+              .map(
+                csvEscape
+              )
+              .join(",")
+        )
+        .join("\n");
+
+
+    const filename =
+      `fortnight-tracker-history-${localISO(
+        new Date()
+      )}.csv`;
+
+
+    downloadTextFile(
+      filename,
+      csv,
+      "text/csv;charset=utf-8"
+    );
+
+
+    setExportStatus(
+      "success",
+      `CSV history created with ${Math.max(
+        0,
+        rows.length - 1
+      )} logged working ${
+        rows.length - 1 === 1
+          ? "day"
+          : "days"
+      }.`
+    );
+
+  } catch (error) {
+
+    setExportStatus(
+      "failure",
+      "Unable to create the CSV history export."
+    );
+
+  }
+
+}
+
+
+/* =========================
    SETUP
 ========================= */
 
@@ -2301,14 +2631,6 @@ function performTrackerReset() {
       ? 1
       : 2;
 
-
-  /*
-    Remove all tracker records,
-    including legacy versions.
-
-    Dashboard connection settings
-    are deliberately retained.
-  */
 
   localStorage.removeItem(
     CURRENT_KEY
@@ -2798,6 +3120,50 @@ function renderOverview() {
    CALENDAR
 ========================= */
 
+function renderWeekTotals(
+  fortnight
+) {
+
+  const week1 =
+    fortnight.days
+      .slice(0, 5)
+      .reduce(
+        (sum, day) =>
+          sum +
+          paidMinutes(day),
+        0
+      );
+
+
+  const week2 =
+    fortnight.days
+      .slice(5, 10)
+      .reduce(
+        (sum, day) =>
+          sum +
+          paidMinutes(day),
+        0
+      );
+
+
+  el(
+    "week1Total"
+  ).textContent =
+    fmtHM(
+      week1
+    );
+
+
+  el(
+    "week2Total"
+  ).textContent =
+    fmtHM(
+      week2
+    );
+
+}
+
+
 function renderCalendar() {
 
   const fortnight =
@@ -2946,6 +3312,11 @@ function renderCalendar() {
       );
 
     }
+  );
+
+
+  renderWeekTotals(
+    fortnight
   );
 
 }
@@ -3513,74 +3884,46 @@ function returnToCurrent() {
    EDITOR
 ========================= */
 
-function clearPresetSelection() {
+function renderDayDetails() {
 
   document
     .querySelectorAll(
-      ".quick-preset"
+      "[data-location]"
     )
     .forEach(
       button => {
 
-        button.classList.remove(
-          "selected"
+        button.classList.toggle(
+          "selected",
+          button.dataset.location ===
+            editorLocation
         );
 
       }
     );
 
-}
+
+  document
+    .querySelectorAll(
+      "[data-gym]"
+    )
+    .forEach(
+      button => {
+
+        const value =
+          button.dataset.gym ===
+          "true";
 
 
-function setPresetSelection(key) {
+        button.classList.toggle(
+          "selected",
+          typeof editorGym ===
+            "boolean" &&
+            value === editorGym
+        );
 
-  clearPresetSelection();
-
-
-  const button =
-    document.querySelector(
-      `.quick-preset[data-preset="${key}"]`
+      }
     );
-
-
-  if (button) {
-
-    button.classList.add(
-      "selected"
-    );
-
-  }
-
-}
-
-
-function detectPreset() {
-
-  const found =
-    Object.entries(
-      presets
-    ).find(
-      ([, preset]) =>
-        preset.start ===
-          editorStart &&
-        preset.finish ===
-          editorFinish &&
-        preset.break ===
-          editorBreak
-    );
-
-
-  if (found) {
-
-    setPresetSelection(
-      found[0]
-    );
-
-  } else {
-
-    clearPresetSelection();
-
-  }
 
 }
 
@@ -3635,8 +3978,6 @@ function renderBreakButtons() {
             minutes;
 
           renderBreakButtons();
-
-          detectPreset();
 
           refreshEditorTotal();
 
@@ -3773,8 +4114,6 @@ function renderTimePicker(
 
           renderEditorValues();
 
-          detectPreset();
-
           refreshEditorTotal();
 
 
@@ -3833,6 +4172,8 @@ function renderEditorValues() {
   ).textContent =
     editorFinish;
 
+
+  renderDayDetails();
 
   renderBreakButtons();
 
@@ -3982,6 +4323,7 @@ function expandTimeRange(
 function editorValue() {
 
   return {
+
     start:
       editorStart,
 
@@ -3991,10 +4333,17 @@ function editorValue() {
     break:
       editorBreak,
 
+    location:
+      editorLocation,
+
+    gym:
+      editorGym,
+
     note:
       el(
         "dayNote"
       ).value.trim()
+
   };
 
 }
@@ -4222,6 +4571,20 @@ function openEditor(index) {
       : 30;
 
 
+  editorLocation =
+    day.location === "office" ||
+    day.location === "wfh"
+      ? day.location
+      : "";
+
+
+  editorGym =
+    typeof day.gym ===
+      "boolean"
+      ? day.gym
+      : null;
+
+
   ensureTimeInRange(
     editorStart,
     startRange
@@ -4241,8 +4604,6 @@ function openEditor(index) {
 
 
   renderEditorValues();
-
-  detectPreset();
 
   refreshEditorTotal();
 
@@ -4583,6 +4944,42 @@ function bindEvents() {
 
 
   /*
+    Export / backup
+  */
+
+  el(
+    "exportTrackerBtn"
+  ).addEventListener(
+    "click",
+    openExportSheet
+  );
+
+
+  el(
+    "closeExport"
+  ).addEventListener(
+    "click",
+    closeExportSheet
+  );
+
+
+  el(
+    "exportJsonBtn"
+  ).addEventListener(
+    "click",
+    exportJsonBackup
+  );
+
+
+  el(
+    "exportCsvBtn"
+  ).addEventListener(
+    "click",
+    exportCsvHistory
+  );
+
+
+  /*
     Reset tracker
   */
 
@@ -4757,7 +5154,7 @@ function bindEvents() {
 
   document
     .querySelectorAll(
-      ".quick-preset"
+      "[data-location]"
     )
     .forEach(
       button => {
@@ -4766,58 +5163,34 @@ function bindEvents() {
           "click",
           () => {
 
-            const key =
-              button.dataset.preset;
+            editorLocation =
+              button.dataset.location;
+
+            renderDayDetails();
+
+          }
+        );
+
+      }
+    );
 
 
-            const preset =
-              presets[key];
+  document
+    .querySelectorAll(
+      "[data-gym]"
+    )
+    .forEach(
+      button => {
 
+        button.addEventListener(
+          "click",
+          () => {
 
-            if (!preset) {
-              return;
-            }
+            editorGym =
+              button.dataset.gym ===
+              "true";
 
-
-            editorStart =
-              preset.start;
-
-
-            editorFinish =
-              preset.finish;
-
-
-            editorBreak =
-              preset.break;
-
-
-            el(
-              "dayNote"
-            ).value =
-              preset.note;
-
-
-            ensureTimeInRange(
-              editorStart,
-              startRange
-            );
-
-
-            ensureTimeInRange(
-              editorFinish,
-              finishRange
-            );
-
-
-            renderEditorValues();
-
-            setPresetSelection(
-              key
-            );
-
-            refreshEditorTotal();
-
-            closeTimePickers();
+            renderDayDetails();
 
           }
         );
@@ -4950,13 +5323,7 @@ function bindEvents() {
     "dayNote"
   ).addEventListener(
     "input",
-    () => {
-
-      clearPresetSelection();
-
-      refreshEditorTotal();
-
-    }
+    refreshEditorTotal
   );
 
 
@@ -5035,6 +5402,18 @@ function bindEvents() {
 
       updated.days[
         editingIndex
+      ].location =
+        value.location;
+
+
+      updated.days[
+        editingIndex
+      ].gym =
+        value.gym;
+
+
+      updated.days[
+        editingIndex
       ].note =
         value.note;
 
@@ -5094,6 +5473,18 @@ function bindEvents() {
         editingIndex
       ].break =
         30;
+
+
+      updated.days[
+        editingIndex
+      ].location =
+        "";
+
+
+      updated.days[
+        editingIndex
+      ].gym =
+        null;
 
 
       updated.days[
@@ -5169,6 +5560,25 @@ function bindEvents() {
       ) {
 
         closeDashboardSyncSheet();
+
+      }
+
+    }
+  );
+
+
+  el(
+    "exportSheet"
+  ).addEventListener(
+    "click",
+    event => {
+
+      if (
+        event.target ===
+        el("exportSheet")
+      ) {
+
+        closeExportSheet();
 
       }
 
