@@ -20,6 +20,7 @@ Static, mobile-first web app ready for GitHub Pages.
 - Includes a web-app manifest and service worker for Add to Home Screen / offline use.
 
 ## GitHub Pages
+
 Upload all files in this folder to the root of a GitHub repository. Then enable:
 Settings → Pages → Deploy from a branch → main → /(root)
 
