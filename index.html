@@ -242,6 +242,15 @@
           Create fortnight
         </button>
 
+
+        <button
+          id="setupImportBtn"
+          class="secondary-btn"
+          type="button"
+        >
+          Restore from JSON backup
+        </button>
+
       </div>
 
 
@@ -583,7 +592,7 @@
           >
 
             <span>
-              Export tracker data
+              Backup & restore
             </span>
 
             <span class="action-arrow">
@@ -1291,7 +1300,7 @@
   </div>
 
 
-  <!-- EXPORT TRACKER DATA -->
+  <!-- BACKUP & RESTORE -->
 
   <div
     id="exportSheet"
@@ -1324,7 +1333,7 @@
           </div>
 
           <h2>
-            Export & backup
+            Backup & restore
           </h2>
 
         </div>
@@ -1336,12 +1345,14 @@
 
         <p>
           Keep a copy of your tracker history
-          outside this browser.
+          outside this browser or restore it
+          onto another installation.
         </p>
 
         <p class="muted">
-          JSON is the full backup. CSV is useful
-          for Excel and longer-term analysis.
+          JSON is the complete tracker backup.
+          CSV is useful for Excel and
+          longer-term analysis.
         </p>
 
       </div>
@@ -1356,8 +1367,9 @@
           </strong>
 
           <p>
-            Complete tracker history and settings
-            for future restore or migration.
+            Complete tracker history for
+            backup, restore or migration
+            to another device.
           </p>
 
         </div>
@@ -1368,6 +1380,34 @@
           type="button"
         >
           Export JSON
+        </button>
+
+      </div>
+
+
+      <div class="export-option-card">
+
+        <div>
+
+          <strong>
+            Restore JSON backup
+          </strong>
+
+          <p>
+            Choose a previously exported
+            tracker backup. The file will be
+            checked before any existing
+            tracker data is replaced.
+          </p>
+
+        </div>
+
+        <button
+          id="importJsonBtn"
+          class="secondary-btn"
+          type="button"
+        >
+          Import JSON backup
         </button>
 
       </div>
@@ -1410,6 +1450,16 @@
     </section>
 
   </div>
+
+
+  <!-- HIDDEN BACKUP FILE PICKER -->
+
+  <input
+    id="importJsonFile"
+    type="file"
+    accept=".json,application/json"
+    hidden
+  >
 
 
   <!-- RESET TRACKER -->
@@ -1595,7 +1645,7 @@
   </div>
 
 
-  <script src="./app.js?v=12"></script>
+  <script src="./app.js?v=13"></script>
 
 </body>
 </html>
