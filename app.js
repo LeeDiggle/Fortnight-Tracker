@@ -2196,6 +2196,321 @@ function exportJsonBackup() {
 }
 
 
+
+function openImportPicker() {
+
+  const input =
+    el(
+      "importJsonFile"
+    );
+
+
+  if (!input) {
+    return;
+  }
+
+
+  setExportStatus(
+    "",
+    ""
+  );
+
+
+  input.value = "";
+
+  input.click();
+
+}
+
+
+function validateBackupData(
+  backup
+) {
+
+  if (
+    !backup ||
+    typeof backup !== "object"
+  ) {
+
+    throw new Error(
+      "This file is not a valid tracker backup."
+    );
+
+  }
+
+
+  if (
+    backup.version !== 1
+  ) {
+
+    throw new Error(
+      "This backup version is not supported."
+    );
+
+  }
+
+
+  if (
+    Number(backup.targetMinutes) !==
+    TARGET
+  ) {
+
+    throw new Error(
+      "This backup was created for a different tracker target."
+    );
+
+  }
+
+
+  if (
+    !backup.currentState ||
+    !Array.isArray(
+      backup.history
+    )
+  ) {
+
+    throw new Error(
+      "The backup is missing tracker data."
+    );
+
+  }
+
+
+  const restoredCurrent =
+    normaliseFortnight(
+      backup.currentState
+    );
+
+
+  if (!restoredCurrent) {
+
+    throw new Error(
+      "The current fortnight in this backup could not be read."
+    );
+
+  }
+
+
+  const restoredHistory =
+    backup.history
+      .map(
+        normaliseFortnight
+      )
+      .filter(Boolean)
+      .sort(
+        (a, b) =>
+          a.start.localeCompare(
+            b.start
+          )
+      );
+
+
+  return {
+    currentState:
+      restoredCurrent,
+    history:
+      restoredHistory,
+    exportedAt:
+      typeof backup.exportedAt ===
+      "string"
+        ? backup.exportedAt
+        : ""
+  };
+
+}
+
+
+function formatBackupDate(
+  value
+) {
+
+  if (!value) {
+    return "";
+  }
+
+
+  const date =
+    new Date(value);
+
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+
+    return "";
+  }
+
+
+  return new Intl.DateTimeFormat(
+    "en-GB",
+    {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    }
+  ).format(date);
+
+}
+
+
+async function importJsonBackup(
+  event
+) {
+
+  const input =
+    event.target;
+
+
+  const file =
+    input.files &&
+    input.files[0];
+
+
+  if (!file) {
+    return;
+  }
+
+
+  try {
+
+    const text =
+      await file.text();
+
+
+    const parsed =
+      JSON.parse(
+        text
+      );
+
+
+    const restored =
+      validateBackupData(
+        parsed
+      );
+
+
+    const backupDate =
+      formatBackupDate(
+        restored.exportedAt
+      );
+
+
+    const dateText =
+      backupDate
+        ? ` from ${backupDate}`
+        : "";
+
+
+    const confirmed =
+      window.confirm(
+        "Restore tracker backup" +
+        dateText +
+        "?\n\n" +
+        "This will replace the tracker hours and fortnight history on this device. " +
+        "Dashboard sync connection details will be kept."
+      );
+
+
+    if (!confirmed) {
+
+      setExportStatus(
+        "",
+        "Restore cancelled."
+      );
+
+      return;
+
+    }
+
+
+    currentState =
+      restored.currentState;
+
+
+    history =
+      restored.history;
+
+
+    setupStart =
+      currentState.start;
+
+
+    setupOffWeek =
+      currentState.normalOffWeek ||
+      2;
+
+
+    resetStart =
+      currentState.start;
+
+
+    resetOffWeek =
+      currentState.normalOffWeek ||
+      2;
+
+
+    viewedStart =
+      currentState.configured ===
+      false
+        ? null
+        : getDefaultViewStart();
+
+
+    persistCurrent();
+
+    persistHistory();
+
+
+    closeExportSheet();
+
+
+    renderShell();
+
+
+    if (
+      currentState.configured !==
+      false
+    ) {
+
+      window.alert(
+        "Tracker backup restored successfully."
+      );
+
+    } else {
+
+      window.alert(
+        "Backup restored successfully."
+      );
+
+    }
+
+  } catch (error) {
+
+    const message =
+      error &&
+      error.message
+        ? error.message
+        : "Unable to restore this backup.";
+
+
+    setExportStatus(
+      "failure",
+      message
+    );
+
+  } finally {
+
+    input.value = "";
+
+  }
+
+}
+
+
 function csvEscape(value) {
 
   const text =
@@ -4968,6 +5283,30 @@ function bindEvents() {
   ).addEventListener(
     "click",
     exportJsonBackup
+  );
+
+
+  el(
+    "importJsonBtn"
+  ).addEventListener(
+    "click",
+    openImportPicker
+  );
+
+
+  el(
+    "setupImportBtn"
+  ).addEventListener(
+    "click",
+    openImportPicker
+  );
+
+
+  el(
+    "importJsonFile"
+  ).addEventListener(
+    "change",
+    importJsonBackup
   );
 
 
