@@ -3,6 +3,7 @@
 Static, mobile-first web app ready for GitHub Pages.
 
 ## What it does
+
 - Set the Monday that starts Week 1.
 - Choose Week 1 Friday or Week 2 Friday as the non-working day.
 - Shows the whole fortnight as a dated calendar.
